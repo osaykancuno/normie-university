@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git --version)",
+      "Bash(npm --version)",
+      "Bash(forge --version)",
+      "Bash(curl -L https://foundry.paradigm.xyz)",
+      "Bash(bash)",
+      "Bash(export PATH=\"$PATH:/c/Users/Utente/.foundry/bin\")",
+      "Bash(foundryup)",
+      "Bash(forge init *)",
+      "Bash(forge install *)",
+      "Bash(forge build *)",
+      "Bash(npx create-next-app@latest app --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-turbopack)",
+      "Bash(npm install *)"
+    ]
+  }
+}

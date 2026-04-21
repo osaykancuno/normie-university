@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Foundry
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+
+# Next.js
+app/.next/
+app/out/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+lcov.info
+
+# TypeScript
+*.tsbuildinfo
+
+# Misc
+*.log
