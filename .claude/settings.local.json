@@ -12,7 +12,9 @@
       "Bash(forge install *)",
       "Bash(forge build *)",
       "Bash(npx create-next-app@latest app --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-turbopack)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "WebSearch",
+      "Bash(forge test *)"
     ]
   }
 }

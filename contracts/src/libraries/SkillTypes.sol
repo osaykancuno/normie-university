@@ -47,10 +47,14 @@ library SkillTypes {
     //                              STRUCTS
     // =========================================================================
 
-    /// @notice Profile of a registered agent
+    /// @notice Profile of a registered agent (ERC-8004 Identity compliant)
+    /// @dev Each agent is represented as an ERC-721 NFT. The tokenId is the agent's
+    ///      canonical identity. The registrationFileURI follows the ERC-8004 spec
+    ///      (JSON file with agent metadata, supported protocols, endpoints, etc.)
     struct AgentProfile {
-        address agentAddress;
-        string  metadataURI;   // IPFS URI with agent metadata
+        uint256 tokenId;             // ERC-721 tokenId (agent identity)
+        address agentAddress;        // Owner / controller address
+        string  registrationFileURI; // ERC-8004 registration file URI (IPFS / HTTPS)
         uint256 registeredAt;
         uint256 updatedAt;
         bool    isActive;
