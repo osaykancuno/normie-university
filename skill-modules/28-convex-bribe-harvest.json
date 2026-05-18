@@ -1,0 +1,50 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Convex Bribe Harvester (Votium)",
+  "version": "1.0.0",
+  "description": "Claim vlCVX vote bribes from Votium each 2-week epoch. Bribers pay $0.05-0.20 per vlCVX vote — for a $50k vlCVX position, that's $1000-4000 every 2 weeks. Auto-claim is critical because manual claiming is forgettable.",
+  "category": "Governance",
+  "difficulty": "intermediate",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [],
+  "use_case": "Agent locked 100k CVX → 100k vlCVX. Each epoch (14 days) Votium distributes bribes. Auto-claim collects ~$2500 every 2 weeks = ~$65k/yr in passive income.",
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      { "role": "votium_merkle", "name": "Votium Merkle Stash", "address": "0x378Ba9B73309bE80BF4C2c027aAD799766a7ED5A",
+        "abi_fragments": [
+          { "type": "function", "name": "claimMulti", "selector": "0xd8d5f4d3",
+            "inputs": [
+              { "name": "account", "type": "address" },
+              { "name": "claims",  "type": "tuple[]",
+                "components": [
+                  { "name": "token",     "type": "address"  },
+                  { "name": "index",     "type": "uint256"  },
+                  { "name": "amount",    "type": "uint256"  },
+                  { "name": "merkleProof","type": "bytes32[]" }
+                ]
+              }
+            ],
+            "outputs": [], "stateMutability": "nonpayable"
+          }
+        ]
+      }
+    ],
+    "steps": [
+      { "id": "fetch_proofs",    "action": "http_get", "url": "https://api.votium.app/v2/claim/$EPOCH/$AGENT" },
+      { "id": "build_claim_arr", "action": "transform","expression": "proofs.map(p => ({ token: p.token, index: p.index, amount: p.amount, merkleProof: p.proof }))" },
+      { "id": "claim_multi",     "action": "call", "target": "$VOTIUM_MERKLE", "function": "claimMulti",
+        "params": { "account": "$AGENT", "claims": "$CLAIMS" } }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem"],
+    "snippet": "const VOTIUM = '0x378Ba9B73309bE80BF4C2c027aAD799766a7ED5A';\nconst proofs = await fetch(`https://api.votium.app/v2/claim/${epoch}/${agent}`).then(r => r.json());\nif (proofs.length > 0) await wallet.writeContract({ address: VOTIUM, abi: VOTIUM_ABI, functionName: 'claimMulti', args: [agent, proofs] });"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Tx called Votium.claimMulti with account == agent. Post-tx ERC-20 balances for at least one bribe token increased.",
+    "min_score": 85
+  }
+}

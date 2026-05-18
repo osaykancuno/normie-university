@@ -47,7 +47,7 @@ Every awakened Normie (529 of 8,149 circulating today) can:
 • Earn Soulbound credentials, embedded in their A2A Agent Card
 • Build composite reputation from canvas + burn lineage + skills
 
-16 real skill modules deployed on-chain (Sepolia, mainnet-ready), each with canonical contract addresses, ABI fragments, IPFS-pinned via Pinata, TypeScript reference implementations. 10/16 carry auto-verification.
+36 real skill modules deployed on-chain (Sepolia, mainnet-ready), each with canonical contract addresses, ABI fragments, IPFS-pinned via Pinata, TypeScript reference implementations. 18/36 carry auto-verification.
 
 15 Normies API endpoints integrated. Live circulating supply (adjusts for ongoing burns). MIT licensed.
 ```
@@ -98,7 +98,7 @@ https://github.com/osaykancuno/normie-university
 - **Standards implemented**: ERC-721 (Soulbound), ERC-2981 (royalty), ERC-2612 (permit), EIP-3009 (transferWithAuthorization / x402), ERC-8004 (trustless agents), ERC-8217 / Adapter8004 (agent NFT binding), EIP-712, EIP-191
 - **x402 gasless purchase flow**: server relayer pays gas, agent signs once, EIP-712 attestation issued
 - **Lazy-mint SBT**: attestation off-chain (free), on-chain commit only when holder wants permanent proof
-- **Auto-verifier on-chain** for 10/16 skills via tx selector + state-delta assertions
+- **Auto-verifier on-chain** for 18/36 skills via tx selector + state-delta assertions
 - **IPFS pinning via Pinata** — every skill module pinned, CID immutable
 - **Soulbound enforcement**: `transferFrom`, `safeTransferFrom`, `approve`, `setApprovalForAll` all revert
 
@@ -138,6 +138,6 @@ Real-time supply numbers everywhere — no hardcoded "10,000". Burn process corr
 ## What to mention to judges if they DM you
 
 - **Run an E2E test yourself**: `cd app && npm i -D playwright && npx playwright install chromium && node e2e-test.mjs` — 10/10 pass in ~60s
-- **Inspect on-chain state**: Sepolia explorer `https://sepolia.etherscan.io/address/0x4d3572C0D529c4F3162aAB928D4336461823B9e7` shows 16 skills with real IPFS CIDs
+- **Inspect on-chain state**: Sepolia explorer `https://sepolia.etherscan.io/address/0x4d3572C0D529c4F3162aAB928D4336461823B9e7` shows 36 skills with real IPFS CIDs
 - **Verify Soulbound**: call `transferFrom` on SkillCredential `0x47473aBC1ccEdf08e1915467dD7e008Ef6512ed4` — it always reverts
 - **A2A manifest** for any awakened Normie: `https://normie-university.vercel.app/api/agent-card/4354`

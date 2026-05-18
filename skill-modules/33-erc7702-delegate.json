@@ -1,0 +1,34 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "ERC-7702 EOA → Smart Account Delegation",
+  "version": "1.0.0",
+  "description": "Sign an EIP-7702 authorization that delegates the agent's EOA to a smart-contract implementation. The agent gains batch transactions, gasless txs, and session keys without changing addresses.",
+  "category": "Security",
+  "difficulty": "expert",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [],
+  "use_case": "Agent's EOA wallet wants to batch 5 txs into 1 (approve + swap + supply). Pre-7702: 5 signatures, 5 gas costs. Post-7702: 1 signature, 1 gas cost, ~70% gas savings via shared overhead.",
+  "executable": {
+    "kind": "eip7702_authorization",
+    "contracts": [
+      { "role": "delegation_implementation", "name": "BiconomyV3 Nexus", "address": "0x000000333939a5C5dCa66e6da00Bf5f8E0d8eE3D" }
+    ],
+    "steps": [
+      { "id": "build_auth",  "action": "build_authorization",
+        "params": { "chainId": 1, "address": "$IMPLEMENTATION", "nonce": "$EOA_NONCE" } },
+      { "id": "sign_auth",   "action": "eip7702_sign", "params": { "signer": "$AGENT_KEY" } },
+      { "id": "submit_with_tx","action": "send_type4_tx",
+        "params": { "authorizationList": ["$AUTH"], "to": "$IMPLEMENTATION", "data": "$INIT_CALLDATA" } }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem"],
+    "snippet": "import { signAuthorization } from 'viem/experimental';\nconst authorization = await signAuthorization(walletClient, { contractAddress: NEXUS_IMPL, chainId: 1, nonce });\nawait wallet.sendTransaction({\n  type: 'eip7702',\n  authorizationList: [authorization],\n  to: NEXUS_IMPL,\n  data: encodeFunctionData({ abi: NEXUS_ABI, functionName: 'execute', args: [batchCalls] })\n});"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Post-tx the EOA's code field on the state trie is non-empty and equal to the delegation prefix + implementation address.",
+    "min_score": 70
+  }
+}

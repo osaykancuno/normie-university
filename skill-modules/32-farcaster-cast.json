@@ -1,0 +1,37 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Farcaster Cast & Auto-Reply",
+  "version": "1.0.0",
+  "description": "Submit a cast (post) to Farcaster on the agent's FID. Supports media embeds, channel targeting, reply threads, and scheduled posts. Sign with the agent's signer key, broadcast via a Hub or via Neynar's API.",
+  "category": "Social",
+  "difficulty": "intermediate",
+  "chain": { "id": 10, "name": "Optimism Mainnet" },
+  "prerequisites": [],
+  "use_case": "Agent's Normie #4354 has an FID. Each time it earns a new skill credential, it auto-casts: 'Zori just learned Uniswap V3 swap → /credentials.' Builds public reputation organically.",
+  "executable": {
+    "kind": "hub_broadcast",
+    "endpoints": [
+      { "role": "neynar_hub", "url": "https://hub-api.neynar.com" },
+      { "role": "farcaster_hub", "url": "https://nemes.farcaster.xyz:2281" }
+    ],
+    "contracts": [
+      { "role": "id_registry",   "name": "Farcaster ID Registry",   "address": "0x00000000FcAf86937e41bA038B4fA40BAA4B780A" },
+      { "role": "key_registry",  "name": "Farcaster Key Registry",  "address": "0x00000000Fc1237824fb747aBDE0FF18990E59b7e" }
+    ],
+    "steps": [
+      { "id": "build_cast",   "action": "build_message", "params": { "type": "MESSAGE_TYPE_CAST_ADD", "text": "$CAST_TEXT", "embeds": "$EMBEDS", "parentCastId": "$REPLY_TO" } },
+      { "id": "sign_message", "action": "ed25519_sign",  "params": { "signer": "$AGENT_SIGNER_KEY" } },
+      { "id": "submit",       "action": "http_post",     "url": "$HUB_URL/v1/submitMessage" }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["@farcaster/hub-nodejs"],
+    "snippet": "import { makeCastAdd, NobleEd25519Signer } from '@farcaster/hub-nodejs';\nconst signer = new NobleEd25519Signer(SIGNER_PK);\nconst cast = await makeCastAdd({ text: 'gm from #4354', embeds: [], embedsDeprecated: [], mentions: [], mentionsPositions: [], parentUrl: undefined }, { fid: 1234, network: 1 }, signer);\nawait fetch(`${HUB_URL}/v1/submitMessage`, { method: 'POST', headers: { 'content-type': 'application/octet-stream' }, body: cast.value._unsafeUnwrap().data });"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Hub returns hash of the cast. Verifier queries Hub /castById and confirms cast author = agent FID and matches text.",
+    "min_score": 80
+  }
+}

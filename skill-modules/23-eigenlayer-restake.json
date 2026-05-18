@@ -1,0 +1,48 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "EigenLayer Restaking with AVS Selection",
+  "version": "1.0.0",
+  "description": "Deposit stETH (or other LSTs) into EigenLayer and delegate to a curated operator. Earns ETH staking yield + AVS rewards (typically 4-12% extra APR on top of base 3-4% staking). Slashing-aware operator shortlist included.",
+  "category": "DeFi",
+  "difficulty": "advanced",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [24],
+  "use_case": "Agent stakes 32 ETH via Lido for stETH (3.5% APR). Restakes via EigenLayer to EigenDA AVS = +6% restaking rewards. Total: 9.5% APR on ETH. Slashing risk capped at 1% per epoch.",
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      { "role": "strategy_manager", "name": "EigenLayer Strategy Manager", "address": "0x858646372CC42E1A627fcE94aa7A7033e7CF075A",
+        "abi_fragments": [
+          { "type": "function", "name": "depositIntoStrategy", "selector": "0xe7a050aa",
+            "inputs": [
+              { "name": "strategy", "type": "address" },
+              { "name": "token",    "type": "address" },
+              { "name": "amount",   "type": "uint256" }
+            ],
+            "outputs": [{ "name": "shares", "type": "uint256" }],
+            "stateMutability": "nonpayable"
+          }
+        ]
+      },
+      { "role": "delegation_manager", "name": "EigenLayer Delegation Manager", "address": "0x39053D51B77DC0d36036Fc1fCc8Cb819df8Ef37A" },
+      { "role": "stETH_strategy",    "name": "stETH Strategy",                "address": "0x93c4b944D05dfe6df7645A86cd2206016c51564D" }
+    ],
+    "steps": [
+      { "id": "approve",         "action": "erc20_approve", "params": { "token": "$STETH", "spender": "$STRATEGY_MANAGER", "amount": "$AMOUNT" } },
+      { "id": "deposit",         "action": "call", "target": "$STRATEGY_MANAGER", "function": "depositIntoStrategy",
+        "params": { "strategy": "$STETH_STRATEGY", "token": "$STETH", "amount": "$AMOUNT" } },
+      { "id": "delegate",        "action": "call", "target": "$DELEGATION_MANAGER", "function": "delegateTo",
+        "params": { "operator": "$OPERATOR_FROM_SHORTLIST", "approverSignatureAndExpiry": "$SIG", "approverSalt": "$SALT" } }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem"],
+    "snippet": "const STRAT_MGR = '0x858646372CC42E1A627fcE94aa7A7033e7CF075A';\nconst STETH_STRAT = '0x93c4b944D05dfe6df7645A86cd2206016c51564D';\nawait wallet.writeContract({ address: stETH, abi: erc20, functionName: 'approve', args: [STRAT_MGR, amount] });\nawait wallet.writeContract({ address: STRAT_MGR, abi, functionName: 'depositIntoStrategy', args: [STETH_STRAT, stETH, amount] });"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Post-tx: agent address has non-zero shares in stETH strategy AND is delegated to one of the approved operators in the AVS shortlist.",
+    "min_score": 75
+  }
+}

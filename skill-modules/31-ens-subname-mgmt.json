@@ -1,0 +1,49 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "ENS Subname Management",
+  "version": "1.0.0",
+  "description": "Set, transfer, or resolve ENS subnames programmatically (e.g., agent.normie.eth, vault.normie.eth). Enables namespace-as-product for any organization with an ENS name.",
+  "category": "Social",
+  "difficulty": "beginner",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [],
+  "use_case": "Agent operator owns normie.eth. Creates 4354.normie.eth pointing to Zori's wallet automatically when a Normie is awakened. Each Normie gets a human-readable name.",
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      { "role": "ens_registry", "name": "ENS Registry",          "address": "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e",
+        "abi_fragments": [
+          { "type": "function", "name": "setSubnodeRecord", "selector": "0x5ef2c7f0",
+            "inputs": [
+              { "name": "node",      "type": "bytes32" },
+              { "name": "label",     "type": "bytes32" },
+              { "name": "owner",     "type": "address" },
+              { "name": "resolver",  "type": "address" },
+              { "name": "ttl",       "type": "uint64"  }
+            ],
+            "outputs": [], "stateMutability": "nonpayable"
+          }
+        ]
+      },
+      { "role": "public_resolver","name": "ENS Public Resolver", "address": "0x231b0Ee14048e9dCcD1d247744d114a4EB5E8E63" }
+    ],
+    "steps": [
+      { "id": "compute_namehash", "action": "namehash",          "params": { "name": "$PARENT_NAME" } },
+      { "id": "compute_labelhash","action": "keccak256",         "params": { "string": "$SUBLABEL" } },
+      { "id": "set_subnode",      "action": "call", "target": "$ENS_REGISTRY", "function": "setSubnodeRecord",
+        "params": { "node": "$NODE", "label": "$LABEL", "owner": "$AGENT", "resolver": "$PUBLIC_RESOLVER", "ttl": 3600 } },
+      { "id": "set_addr",         "action": "call", "target": "$PUBLIC_RESOLVER", "function": "setAddr",
+        "params": { "node": "$SUBNODE", "a": "$TARGET_ADDRESS" } }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem","viem/ens"],
+    "snippet": "import { namehash, keccak256, toHex } from 'viem';\nconst parent = namehash('normie.eth');\nconst label = keccak256(toHex('4354'));\nawait wallet.writeContract({ address: ENS_REGISTRY, abi, functionName: 'setSubnodeRecord', args: [parent, label, owner, PUBLIC_RESOLVER, 3600n] });\nawait wallet.writeContract({ address: PUBLIC_RESOLVER, abi: resolverAbi, functionName: 'setAddr', args: [namehash('4354.normie.eth'), targetAddr] });"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Post-tx the namehash resolves to the agent on the registry, and setAddr returns the target address.",
+    "min_score": 90
+  }
+}

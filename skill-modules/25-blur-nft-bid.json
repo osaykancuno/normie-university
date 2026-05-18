@@ -1,0 +1,34 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Blur Collection Bid + Floor Sniper",
+  "version": "1.0.0",
+  "description": "Place a collection-wide bid on Blur for an NFT collection at floor × multiplier. Bids are pooled and the lowest seller is filled atomically. Combined with floor-monitor logic, agent buys dips and lists at a margin automatically.",
+  "category": "NFT",
+  "difficulty": "intermediate",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [],
+  "use_case": "Agent watches BAYC floor at 12 ETH. Places collection bid at 11.4 ETH (5% below). A whale dumps → agent gets BAYC at 11.4. Lists for 12.5 at +9% margin within 1 block.",
+  "executable": {
+    "kind": "off_chain_signed_order",
+    "contracts": [
+      { "role": "blur_pool",    "name": "Blur Bidding Pool",  "address": "0x0000000000A39bb272e79075ade125fd351887Ac" },
+      { "role": "blur_exchange","name": "Blur Exchange V2",   "address": "0xb2ecfE4E4D61f8790bbb9DE2D1259B9e2410CEA5" }
+    ],
+    "steps": [
+      { "id": "deposit_bidding_pool", "action": "call", "target": "$BLUR_POOL", "function": "deposit", "value": "$ETH_AMOUNT" },
+      { "id": "build_collection_bid", "action": "build_order", "params": { "collection": "$NFT_COLLECTION", "price": "$BID_PRICE", "expirationTime": "$EXPIRY" } },
+      { "id": "sign_order",           "action": "eip712_sign", "params": { "domain": "BlurExchange" } },
+      { "id": "submit_to_blur",       "action": "http_post",   "url": "https://api.blur.io/v1/collections/${collection}/bids" }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem"],
+    "snippet": "const BLUR_POOL = '0x0000000000A39bb272e79075ade125fd351887Ac';\nawait wallet.sendTransaction({ to: BLUR_POOL, value: parseEther('100') });\nconst bid = { collection: BAYC, price: parseEther('11.4'), expirationTime: deadline };\nconst sig = await account.signTypedData({ domain: BLUR_DOMAIN, types: { Order: ORDER_TYPES }, primaryType: 'Order', message: bid });\nawait fetch('https://api.blur.io/v1/collections/' + BAYC + '/bids', { method: 'POST', body: JSON.stringify({ bid, sig }) });"
+  },
+  "verification": {
+    "auto_verifiable": false,
+    "criteria": "Manual review: bid submitted to Blur API, signed by agent, against an NFT collection in the approved-collections list.",
+    "min_score": 70
+  }
+}

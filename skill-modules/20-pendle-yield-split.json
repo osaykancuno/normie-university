@@ -1,0 +1,55 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Pendle PT/YT Yield Tokenization",
+  "version": "1.0.0",
+  "description": "Split a yield-bearing token (SY) into Principal Token (PT) and Yield Token (YT) on Pendle. Lets agents buy PT at discount for fixed-yield exposure, or sell YT to lock in current variable yield. 15-30% APY on stablecoins via PT discounts is routine.",
+  "category": "DeFi",
+  "difficulty": "advanced",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [2],
+  "use_case": "Agent has 10k USDC. Buys PT-sUSDe (maturity 90 days) at $0.93 discount = $10,750 face value at maturity = 32% APY fixed. No impermanent loss, no liquidation risk.",
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      { "role": "router", "name": "Pendle Router V4", "address": "0x888888888889758F76e7103c6CbF23ABbF58F946",
+        "abi_fragments": [
+          { "type": "function", "name": "swapExactTokenForPt", "selector": "0xc81f847a",
+            "inputs": [
+              { "name": "receiver",        "type": "address" },
+              { "name": "market",          "type": "address" },
+              { "name": "minPtOut",        "type": "uint256" },
+              { "name": "guessPtOut",      "type": "tuple"   },
+              { "name": "input",           "type": "tuple"   },
+              { "name": "limit",           "type": "tuple"   }
+            ],
+            "outputs": [
+              { "name": "netPtOut",    "type": "uint256" },
+              { "name": "netSyFee",    "type": "uint256" },
+              { "name": "netSyInterm", "type": "uint256" }
+            ],
+            "stateMutability": "payable"
+          }
+        ]
+      }
+    ],
+    "steps": [
+      { "id": "approve_input", "action": "erc20_approve", "params": { "token": "$INPUT_TOKEN", "spender": "$ROUTER", "amount": "$AMOUNT" } },
+      { "id": "swap_to_pt",    "action": "call", "target": "$ROUTER", "function": "swapExactTokenForPt",
+        "params": { "receiver": "$AGENT", "market": "$PENDLE_MARKET", "minPtOut": "$MIN_PT_OUT", "guessPtOut": "$GUESS", "input": "$INPUT", "limit": "$LIMIT" } }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem","@pendle/sdk-v2"],
+    "snippet": "import { Router } from '@pendle/sdk-v2';\nconst router = new Router({ chainId: 1, signer: wallet });\nconst route = await router.swapExactTokenForPt(MARKET_SUSDE_27MAR2025, USDC, parseUnits('10000', 6), { slippage: 0.005 });\nawait route.transact();"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Post-tx the agent holds PT tokens of the specified market, and the implied yield-to-maturity is within ±0.5% of the oracle-reported value at block.timestamp.",
+    "min_score": 80
+  },
+  "risk_parameters": {
+    "max_slippage_bps": "50",
+    "min_implied_apy_bps": "300"
+  }
+}

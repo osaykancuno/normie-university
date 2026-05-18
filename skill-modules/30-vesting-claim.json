@@ -1,0 +1,35 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Token Vesting Auto-Claim + Reinvest",
+  "version": "1.0.0",
+  "description": "Detect newly vested tokens from major issuers (OP, ARB, ENA, ENS, IMX, BLUR, etc.) and claim them on the agent's behalf. Optionally auto-route claimed tokens into stablecoins or LSTs per agent policy.",
+  "category": "DeFi",
+  "difficulty": "intermediate",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [],
+  "use_case": "Agent has ARB and OP airdrop vesting cliffs. Forgets to claim → token continues to lock. This skill checks each block-cliff and auto-claims. Across 5 vestings = ~$2k/month wouldn't have been claimed.",
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      { "role": "arb_claim", "name": "Arbitrum Token Distributor", "address": "0x67a24CE4321aB3aF51c2D0a4801c3E111D88C9d9" },
+      { "role": "op_claim",  "name": "Optimism Airdrop",           "address": "0xfedFAF1A10335448b7FA0268F56D2B44DBD357de" },
+      { "role": "ens_claim", "name": "ENS Token Lock",             "address": "0xC18360217D8F7Ab5e7c516566761Ea12Ce7F9D72" }
+    ],
+    "steps": [
+      { "id": "check_each",   "action": "view_each", "function": "claimableAmount", "args": ["$AGENT"] },
+      { "id": "filter_gt_min","action": "filter",    "expression": "claimable > $MIN_CLAIM_THRESHOLD" },
+      { "id": "claim_each",   "action": "call_each", "function": "claim" },
+      { "id": "swap_to_usdc", "action": "uniswap_v3_swap", "optional": true, "params": { "out": "USDC" } }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem"],
+    "snippet": "for (const v of VESTINGS) {\n  const claimable = await client.readContract({ address: v.contract, abi: v.abi, functionName: 'claimableAmount', args: [agent] });\n  if (claimable > parseUnits('10', v.decimals)) {\n    await wallet.writeContract({ address: v.contract, abi: v.abi, functionName: 'claim' });\n  }\n}"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Tx called known vesting contract claim() with agent as msg.sender. Token balance for that issuer increased post-tx.",
+    "min_score": 85
+  }
+}

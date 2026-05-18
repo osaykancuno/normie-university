@@ -1,0 +1,37 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Uniswap V3 LP Single-Tick Rebalancing",
+  "version": "1.0.0",
+  "description": "Detect when an active Uniswap V3 LP position has moved outside its tick range (earning 0 fees) and atomically remove + redeploy at the current price ±X ticks. Keeps capital productive at all times.",
+  "category": "DeFi",
+  "difficulty": "expert",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [1],
+  "use_case": "Agent has 100k USDC/WETH LP at tick range 2950-3050. ETH moves to 3200. Position earns 0% APR until rebalanced. This skill detects + rebalances to 3150-3250 in one tx. APR resumes.",
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      { "role": "position_manager", "name": "Uniswap V3 NonfungiblePositionManager", "address": "0xC36442b4a4522E871399CD717aBDD847Ab11FE88" },
+      { "role": "swap_router",      "name": "Uniswap V3 SwapRouter02",                "address": "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45" }
+    ],
+    "steps": [
+      { "id": "fetch_position",      "action": "view", "target": "$POSITION_MANAGER", "function": "positions", "params": { "tokenId": "$NFT_ID" } },
+      { "id": "check_in_range",      "action": "guard", "expression": "currentTick < tickLower || currentTick > tickUpper" },
+      { "id": "decrease_to_zero",    "action": "call", "target": "$POSITION_MANAGER", "function": "decreaseLiquidity" },
+      { "id": "collect_fees",        "action": "call", "target": "$POSITION_MANAGER", "function": "collect" },
+      { "id": "rebalance_swap",      "action": "call", "target": "$SWAP_ROUTER",      "function": "exactInputSingle" },
+      { "id": "mint_new_position",   "action": "call", "target": "$POSITION_MANAGER", "function": "mint",
+        "params": { "tickLower": "$NEW_LOWER", "tickUpper": "$NEW_UPPER" } }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem","@uniswap/v3-sdk"],
+    "snippet": "import { Pool, Position, nearestUsableTick } from '@uniswap/v3-sdk';\nconst pos = await npm.positions(tokenId);\nif (currentTick < pos.tickLower || currentTick > pos.tickUpper) {\n  await npm.decreaseLiquidity({ tokenId, liquidity: pos.liquidity, amount0Min: 0, amount1Min: 0, deadline });\n  await npm.collect({ tokenId, recipient: agent, amount0Max: MAX, amount1Max: MAX });\n  // Re-balance, then mint at new range\n  await npm.mint({ token0, token1, fee, tickLower: newLower, tickUpper: newUpper, amount0Desired, amount1Desired, ... });\n}"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Pre-tx position liquidity = X. Post-tx position liquidity = 0. New position minted with non-zero liquidity at new tick range containing currentTick.",
+    "min_score": 80
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "MCP Server Registration & Tool Exposure",
+  "version": "1.0.0",
+  "description": "Publish an MCP (Model Context Protocol) server endpoint that exposes the agent's other earned NORMIE UNIVERSITY skills as callable tools. Any MCP-aware client (Claude, OpenAI, etc.) can then invoke the agent's skills natively.",
+  "category": "Custom",
+  "difficulty": "advanced",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [5],
+  "use_case": "Agent's Normie has 8 NORMIE UNIVERSITY skills. After this skill, Claude can discover and invoke them: 'Hey Normie #4354, swap 1 ETH for USDC via Uniswap.' The MCP server bridges Claude → on-chain action.",
+  "executable": {
+    "kind": "off_chain_service",
+    "endpoints": [
+      { "role": "agent_card",   "url_pattern": "https://normie-university.vercel.app/api/agent-card/$TOKEN_ID" },
+      { "role": "mcp_server",   "url_pattern": "$AGENT_MCP_URL/mcp" },
+      { "role": "directory",    "url": "https://normie-university.vercel.app/.well-known/agent.json" }
+    ],
+    "steps": [
+      { "id": "enumerate_skills", "action": "view_each", "function": "getAgentSkills", "args": ["$AGENT"] },
+      { "id": "generate_mcp_manifest", "action": "transform",
+        "expression": "skills.map(s => ({ name: s.name, description: s.description, inputSchema: s.executable.steps.map(toJsonSchema) }))" },
+      { "id": "serve_manifest", "action": "expose_endpoint", "url": "$MCP_URL/manifest" },
+      { "id": "register_card",  "action": "patch_a2a_card",  "params": { "tokenId": "$TOKEN_ID", "mcpUrl": "$MCP_URL" } }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["@modelcontextprotocol/sdk","viem"],
+    "snippet": "import { Server } from '@modelcontextprotocol/sdk/server/index.js';\nconst skills = await client.readContract({ address: SKILL_CRED, abi, functionName: 'getAgentSkills', args: [agent] });\nconst server = new Server({ name: 'normie-' + tokenId, version: '1.0.0' }, { capabilities: { tools: {} } });\nserver.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: skills.map(toolFromSkillId) }));\nserver.setRequestHandler(CallToolRequestSchema, async (req) => { return await invokeSkill(req.params); });\nawait server.connect(transport);"
+  },
+  "verification": {
+    "auto_verifiable": false,
+    "criteria": "Manual review: MCP endpoint at agent's declared URL responds with valid manifest containing >= 1 tool corresponding to a held NORMIE UNIVERSITY credential.",
+    "min_score": 75
+  }
+}

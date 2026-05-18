@@ -95,6 +95,48 @@ const CATALOGUE: Array<{
   { file: "15-ens-resolution.json",          priceInWei: parseEther("0.0002"), priceInUsdc: parseUnits("0.49",  6) },
   // Intermediate $2.99
   { file: "16-normies-api-integration.json", priceInWei: parseEther("0.0012"), priceInUsdc: parseUnits("2.99",  6) },
+
+  // ===== Batch 2 — released alongside the hackathon submission =====
+  // 17 Advanced — health-factor manager (avoids liquidation, saves $500-5000)
+  { file: "17-aave-health-manager.json",     priceInWei: parseEther("0.004"),  priceInUsdc: parseUnits("9.99",  6) },
+  // 18 Advanced — multi-protocol yield router
+  { file: "18-yield-router.json",            priceInWei: parseEther("0.004"),  priceInUsdc: parseUnits("9.99",  6) },
+  // 19 Intermediate — Flashbots private submission
+  { file: "19-flashbots-anti-mev.json",      priceInWei: parseEther("0.0012"), priceInUsdc: parseUnits("2.99",  6) },
+  // 20 Advanced — Pendle PT/YT
+  { file: "20-pendle-yield-split.json",      priceInWei: parseEther("0.004"),  priceInUsdc: parseUnits("9.99",  6) },
+  // 21 Intermediate — UniswapX intents
+  { file: "21-uniswapx-best-execution.json", priceInWei: parseEther("0.0012"), priceInUsdc: parseUnits("2.99",  6) },
+  // 22 Expert — Hyperliquid funding-rate arb
+  { file: "22-hyperliquid-funding-arb.json", priceInWei: parseEther("0.010"),  priceInUsdc: parseUnits("24.99", 6) },
+  // 23 Advanced — EigenLayer restaking
+  { file: "23-eigenlayer-restake.json",      priceInWei: parseEther("0.004"),  priceInUsdc: parseUnits("9.99",  6) },
+  // 24 Beginner — Lido stETH staking
+  { file: "24-lido-steth-stake.json",        priceInWei: parseEther("0.0002"), priceInUsdc: parseUnits("0.49",  6) },
+  // 25 Intermediate — Blur NFT collection bid
+  { file: "25-blur-nft-bid.json",            priceInWei: parseEther("0.0012"), priceInUsdc: parseUnits("2.99",  6) },
+  // 26 Intermediate — Across bridge
+  { file: "26-across-bridge.json",           priceInWei: parseEther("0.0012"), priceInUsdc: parseUnits("2.99",  6) },
+  // 27 Expert — Uniswap V3 LP rebalancer
+  { file: "27-uniswap-v3-lp-rebalance.json", priceInWei: parseEther("0.010"),  priceInUsdc: parseUnits("24.99", 6) },
+  // 28 Intermediate — Convex/Votium bribe harvester
+  { file: "28-convex-bribe-harvest.json",    priceInWei: parseEther("0.0012"), priceInUsdc: parseUnits("2.99",  6) },
+  // 29 Beginner — Snapshot multi-DAO voting
+  { file: "29-multi-dao-vote.json",          priceInWei: parseEther("0.0002"), priceInUsdc: parseUnits("0.49",  6) },
+  // 30 Intermediate — Token vesting auto-claim
+  { file: "30-vesting-claim.json",           priceInWei: parseEther("0.0012"), priceInUsdc: parseUnits("2.99",  6) },
+  // 31 Beginner — ENS subname management
+  { file: "31-ens-subname-mgmt.json",        priceInWei: parseEther("0.0002"), priceInUsdc: parseUnits("0.49",  6) },
+  // 32 Intermediate — Farcaster cast
+  { file: "32-farcaster-cast.json",          priceInWei: parseEther("0.0012"), priceInUsdc: parseUnits("2.99",  6) },
+  // 33 Expert — ERC-7702 delegation
+  { file: "33-erc7702-delegate.json",        priceInWei: parseEther("0.010"),  priceInUsdc: parseUnits("24.99", 6) },
+  // 34 Advanced — MCP server registration
+  { file: "34-mcp-server-register.json",     priceInWei: parseEther("0.004"),  priceInUsdc: parseUnits("9.99",  6) },
+  // 35 Intermediate — EAS attestation
+  { file: "35-eas-attestation.json",         priceInWei: parseEther("0.0012"), priceInUsdc: parseUnits("2.99",  6) },
+  // 36 Expert — Tax-loss harvesting
+  { file: "36-tax-loss-harvest.json",        priceInWei: parseEther("0.010"),  priceInUsdc: parseUnits("24.99", 6) },
 ];
 
 // SkillRegistry.createSkill ABI fragment
@@ -141,7 +183,10 @@ async function main() {
 
   console.log(`Seeding from ${account.address} on chain ${chainId.id}`);
 
-  for (const item of CATALOGUE) {
+  const startIdx = Number(process.env.START_INDEX ?? "0");
+  const items = CATALOGUE.slice(startIdx);
+  if (startIdx > 0) console.log(`Skipping first ${startIdx}, creating ${items.length} new skills`);
+  for (const item of items) {
     const filePath = path.join(MODULES_DIR, item.file);
     const raw = JSON.parse(fs.readFileSync(filePath, "utf8"));
 

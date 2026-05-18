@@ -1,0 +1,37 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Tax-Loss Harvesting + Cost-Basis Tracking",
+  "version": "1.0.0",
+  "description": "Track per-lot cost basis for ERC-20 holdings (FIFO/LIFO/HIFO selectable). Identify positions trading below cost basis and propose tax-loss harvesting trades (sell loser, re-buy similar exposure 31 days later to avoid wash-sale).",
+  "category": "Custom",
+  "difficulty": "expert",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [1],
+  "use_case": "Agent bought $50k ETH at $4000, $30k more at $3500. ETH dips to $3200. Sell the $4000 lot for tax loss = realized -$10k loss × 30% tax rate = $3k saved on taxes. Re-buy via wstETH (different asset) to maintain exposure.",
+  "executable": {
+    "kind": "hybrid_offchain_indexing",
+    "endpoints": [
+      { "role": "indexer", "url": "https://normie-university.vercel.app/api/cost-basis" }
+    ],
+    "contracts": [
+      { "role": "swap_router", "name": "Uniswap V3 SwapRouter02", "address": "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45" }
+    ],
+    "steps": [
+      { "id": "build_lots",      "action": "index_history", "params": { "agent": "$AGENT", "method": "$COST_BASIS_METHOD" } },
+      { "id": "scan_unrealized", "action": "compute",       "expression": "for each lot: (currentPrice - costBasis) * size" },
+      { "id": "select_losses",   "action": "filter",        "expression": "unrealizedPnL < -$MIN_HARVEST_USD" },
+      { "id": "execute_sell",    "action": "call",          "target": "$SWAP_ROUTER", "function": "exactInputSingle" },
+      { "id": "schedule_rebuy",  "action": "agenda",        "delay_days": 31, "task": "buy_similar_exposure" }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem"],
+    "snippet": "const lots = await indexer.getLots(agent, { method: 'HIFO' });\nfor (const lot of lots) {\n  const currentPrice = await oracle.price(lot.token);\n  const pnl = (currentPrice - lot.costBasis) * lot.size;\n  if (pnl < -1000) {\n    await wallet.writeContract({ address: SWAP_ROUTER, abi, functionName: 'exactInputSingle', args: [params] });\n    scheduleRebuy(lot.token, lot.size, Date.now() + 31*86400_000);\n  }\n}"
+  },
+  "verification": {
+    "auto_verifiable": false,
+    "criteria": "Manual review: trade matches a lot in the cost-basis ledger, currentPrice < costBasis at execution block, agent records the realization for accounting.",
+    "min_score": 70
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "EAS Attestation Issuance",
+  "version": "1.0.0",
+  "description": "Issue an Ethereum Attestation Service (EAS) attestation. Agents can attest to facts about other addresses or themselves: 'I verified KYC on X', 'I held >0.1 ETH for 30 days', etc. Forms the reputation primitive layer.",
+  "category": "Custom",
+  "difficulty": "intermediate",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [],
+  "use_case": "Agent runs a verification service. For each user that passes a check, it issues an EAS attestation. Other agents read the attestation to gate access (e.g., 'only addresses with KYC-attestation from agent X can use my DEX').",
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      { "role": "eas", "name": "EAS Mainnet", "address": "0xA1207F3BBa224E2c9c3c6D5aF63D0eb1582Ce587",
+        "abi_fragments": [
+          { "type": "function", "name": "attest", "selector": "0xf17325e7",
+            "inputs": [{
+              "name": "request", "type": "tuple",
+              "components": [
+                { "name": "schema",    "type": "bytes32" },
+                { "name": "data",      "type": "tuple",
+                  "components": [
+                    { "name": "recipient",     "type": "address" },
+                    { "name": "expirationTime","type": "uint64" },
+                    { "name": "revocable",     "type": "bool" },
+                    { "name": "refUID",        "type": "bytes32" },
+                    { "name": "data",          "type": "bytes" },
+                    { "name": "value",         "type": "uint256" }
+                  ]
+                }
+              ]
+            }],
+            "outputs": [{ "name": "", "type": "bytes32" }],
+            "stateMutability": "payable"
+          }
+        ]
+      }
+    ],
+    "steps": [
+      { "id": "encode_data", "action": "abi_encode", "schema": "$SCHEMA_SIG", "values": "$VALUES" },
+      { "id": "attest",      "action": "call", "target": "$EAS", "function": "attest",
+        "params": { "request": { "schema": "$SCHEMA_UID", "data": { "recipient": "$RECIPIENT", "expirationTime": 0, "revocable": true, "refUID": "0x0", "data": "$ENCODED", "value": 0 } } } }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["@ethereum-attestation-service/eas-sdk"],
+    "snippet": "import { EAS, SchemaEncoder } from '@ethereum-attestation-service/eas-sdk';\nconst eas = new EAS('0xA1207F3BBa224E2c9c3c6D5aF63D0eb1582Ce587');\neas.connect(signer);\nconst schemaEncoder = new SchemaEncoder('bool isKYCVerified');\nconst encoded = schemaEncoder.encodeData([{ name: 'isKYCVerified', value: true, type: 'bool' }]);\nconst tx = await eas.attest({ schema: SCHEMA_UID, data: { recipient, expirationTime: 0n, revocable: true, data: encoded } });\nawait tx.wait();"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Tx target is EAS contract, function attest, attester == agent. New attestation UID emitted in Attested event.",
+    "min_score": 90
+  }
+}

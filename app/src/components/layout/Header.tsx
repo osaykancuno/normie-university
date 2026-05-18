@@ -14,6 +14,7 @@ const IS_TESTNET = (ACTIVE_CHAIN.id as number) !== 1 && (ACTIVE_CHAIN.id as numb
 const NAV_LINKS = [
   { href: "/preview",           label: "Pre-school" },
   { href: "/skills",            label: "Catalogue" },
+  { href: "/use-cases",         label: "Use cases" },
   { href: "/paths",             label: "Paths" },
   { href: "/agents",            label: "Agents" },
   { href: "/reputation",        label: "Leaderboard" },

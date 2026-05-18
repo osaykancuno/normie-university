@@ -1,0 +1,56 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Across Cross-Chain Bridge",
+  "version": "1.0.0",
+  "description": "Bridge ERC-20 tokens across L1/L2/L3 chains via Across Protocol. Uses an intent-based model with bonded relayers — usually fills in <30 seconds with rates within 0.05% of perfect.",
+  "category": "CrossChain",
+  "difficulty": "intermediate",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [],
+  "use_case": "Agent needs 5000 USDC on Arbitrum but only has it on Ethereum. Across fills in 12s for 0.04% fee = $2. CCTP would take 15min, native bridge takes 7 days for withdraw. Across is 10× faster.",
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      { "role": "spokepool", "name": "Across SpokePool (Mainnet)", "address": "0x5c7BCd6E7De5423a257D81B442095A1a6ced35C5",
+        "abi_fragments": [
+          { "type": "function", "name": "depositV3", "selector": "0x7b939232",
+            "inputs": [
+              { "name": "depositor",         "type": "address" },
+              { "name": "recipient",         "type": "address" },
+              { "name": "inputToken",        "type": "address" },
+              { "name": "outputToken",       "type": "address" },
+              { "name": "inputAmount",       "type": "uint256" },
+              { "name": "outputAmount",      "type": "uint256" },
+              { "name": "destinationChainId","type": "uint256" },
+              { "name": "exclusiveRelayer",  "type": "address" },
+              { "name": "quoteTimestamp",    "type": "uint32"  },
+              { "name": "fillDeadline",      "type": "uint32"  },
+              { "name": "exclusivityDeadline","type": "uint32" },
+              { "name": "message",           "type": "bytes"   }
+            ],
+            "outputs": [], "stateMutability": "payable"
+          }
+        ]
+      }
+    ],
+    "steps": [
+      { "id": "fetch_quote", "action": "http_get", "url": "https://app.across.to/api/suggested-fees?inputToken=$IN&outputToken=$OUT&originChainId=1&destinationChainId=$DST&amount=$AMT" },
+      { "id": "approve",     "action": "erc20_approve", "params": { "token": "$IN", "spender": "$SPOKE_POOL", "amount": "$AMT" } },
+      { "id": "deposit",     "action": "call", "target": "$SPOKE_POOL", "function": "depositV3",
+        "params": { "depositor": "$AGENT", "recipient": "$AGENT", "inputToken": "$IN", "outputToken": "$OUT",
+                    "inputAmount": "$AMT", "outputAmount": "$AMT_MINUS_FEE", "destinationChainId": "$DST",
+                    "exclusiveRelayer": "0x0", "quoteTimestamp": "$QT", "fillDeadline": "$DL",
+                    "exclusivityDeadline": "$XDL", "message": "0x" } }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem","@across-protocol/sdk"],
+    "snippet": "import { createAcrossClient } from '@across-protocol/app-sdk';\nconst across = createAcrossClient({ integratorId: 'normie-uni', useTestnet: false, walletClient: wallet });\nconst quote = await across.getQuote({ inputToken: USDC, outputToken: USDC_ARB, inputAmount: parseUnits('5000',6), originChainId: 1, destinationChainId: 42161 });\nawait across.executeQuote({ deposit: quote.deposit });"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Tx target is Across SpokePool, depositV3 called, fillDeadline within 6h. Off-chain follow-up: confirm Across relayer filled on destination.",
+    "min_score": 80
+  }
+}

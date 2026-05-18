@@ -1,8 +1,10 @@
 # Skills Roadmap — what we ship, what we shipping next
 
-Today: **16 skills live on Ethereum Sepolia** (mainnet-ready). All have real contract addresses, ABI fragments, TypeScript reference implementations, and IPFS-pinned modules. 10/16 carry on-chain auto-verification; 6/16 declare manual review with a 48h SLA upfront.
+Today: **36 skills live on Ethereum Sepolia** (mainnet-ready). All have real contract addresses, ABI fragments, TypeScript reference implementations, and IPFS-pinned Pinata modules. 18/36 carry on-chain auto-verification; the rest declare manual review with a 48h SLA upfront.
 
-This document tracks the **next 39 skill candidates** sourced from real agent-operator pain points. Each skill is scored on three axes:
+The first 16 covered foundational DeFi/NFT/identity operations. The second batch (17-36) added the high-demand verticals previously gathered as candidates: Aave health-factor, multi-protocol yield routing, Flashbots anti-MEV, Pendle, UniswapX, Hyperliquid funding-rate arb, EigenLayer restaking, Lido staking, Blur NFT bidding, Across bridging, Uniswap V3 LP rebalancing, Convex bribery harvest, multi-DAO Snapshot voting, token vesting claim, ENS subnames, Farcaster casting, ERC-7702 delegation, MCP server registration, EAS attestation, tax-loss harvesting.
+
+This document also tracks the **next 23 skill candidates** sourced from continued agent-operator demand signals. Each skill is scored on three axes:
 
 - **$$$** — willingness to pay (target USDC price)
 - **🔥** — frequency of use (one-off vs daily)

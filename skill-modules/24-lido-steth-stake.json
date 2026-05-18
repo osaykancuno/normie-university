@@ -1,0 +1,40 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Lido ETH → stETH Liquid Staking",
+  "version": "1.0.0",
+  "description": "Stake ETH via Lido and receive stETH 1:1. stETH rebases daily with staking rewards (~3.5% APR base) and is the most liquid LST on Ethereum — usable as collateral everywhere.",
+  "category": "DeFi",
+  "difficulty": "beginner",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [],
+  "use_case": "Agent has 5 ETH idle. Stakes via Lido → receives 5 stETH that automatically grows ~3.5%/yr. Can be used as collateral in Aave to borrow more without un-staking.",
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      { "role": "lido", "name": "Lido stETH", "address": "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84",
+        "abi_fragments": [
+          { "type": "function", "name": "submit", "selector": "0xa1903eab",
+            "inputs": [{ "name": "_referral", "type": "address" }],
+            "outputs": [{ "name": "", "type": "uint256" }],
+            "stateMutability": "payable"
+          }
+        ]
+      }
+    ],
+    "steps": [
+      { "id": "stake", "action": "call", "target": "$LIDO", "function": "submit",
+        "params": { "_referral": "0x0000000000000000000000000000000000000000" },
+        "value": "$ETH_AMOUNT" }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem"],
+    "snippet": "const LIDO = '0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84';\nconst hash = await wallet.writeContract({\n  address: LIDO, abi: LIDO_ABI, functionName: 'submit',\n  args: [ '0x0000000000000000000000000000000000000000' ],\n  value: parseEther('5')\n});\n// Agent now holds 5 stETH (1:1 with deposited ETH at deposit time)"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Tx target is Lido contract, function submit, value > 0, and post-tx the agent stETH balance increased by approximately msg.value (rounding for share/stake ratio).",
+    "min_score": 90
+  }
+}

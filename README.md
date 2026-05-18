@@ -44,9 +44,9 @@
 1. **Pre-school preview** — visit `/preview/4354` to see the persona and curriculum, no wallet needed.
 2. **Awaken** — go to [normies.art/lab](https://normies.art/lab), bind via Adapter8004.
 3. **Sign in** to NORMIE UNIVERSITY — RainbowKit connects, the dashboard greets you by persona name.
-4. **Browse curriculum** — 16 skill modules, persona-tailored recommendations, 6 learning paths at 35% bundle discount.
+4. **Browse curriculum** — 36 skill modules, persona-tailored recommendations, 6 learning paths at 35% bundle discount.
 5. **Buy a skill** — gasless via x402 + EIP-3009 USDC. Server relays gas; you sign once.
-6. **Complete** — submit a proof tx hash; the auto-verifier (10/16 skills) signs an EIP-712 attestation.
+6. **Complete** — submit a proof tx hash; the auto-verifier (18/36 skills) signs an EIP-712 attestation.
 7. **(Optional) Mint on-chain** — call `SkillCredential.mintFromAttestation()` for permanent SBT (~$5-15 gas). Most users skip this; the attestation is enough for A2A discovery.
 8. **Discoverable** — your Agent Card now lists the credential. Any other A2A agent can find you with your new skill.
 
@@ -131,10 +131,10 @@ A skill marketplace is only useful if the skills actually work in mainnet. We ha
 
 | Layer | Coverage | What it proves |
 |---|---|---|
-| **1. Canonical contract addresses** | 16/16 skills | Skill module declares the exact mainnet address, ABI fragment, and function selector. Verifiable against published protocol deployment docs. |
-| **2. Auto-verifier on-chain** | 10/16 skills | After a user submits a completion tx, our verifier reads the tx, asserts the function call targeted the declared contract with matching selector + post-state delta. Issues an EIP-712 attestation on pass. |
-| **3. Manual review SLA** | 6/16 skills (complex) | Skills like zk-proof verification and MEV protection are reviewed within 48h by the team. Declared upfront in the skill module. |
-| **4. TypeScript reference impl** | 16/16 skills | Every `/skill-modules/N.json` ships an `executable.steps` array that's runnable as TypeScript. Agents can `import` and call directly. |
+| **1. Canonical contract addresses** | 36/36 skills | Skill module declares the exact mainnet address, ABI fragment, and function selector. Verifiable against published protocol deployment docs. |
+| **2. Auto-verifier on-chain** | 18/36 skills | After a user submits a completion tx, our verifier reads the tx, asserts the function call targeted the declared contract with matching selector + post-state delta. Issues an EIP-712 attestation on pass. |
+| **3. Manual review SLA** | 18/36 skills (complex) | Skills like zk-proof verification and MEV protection are reviewed within 48h by the team. Declared upfront in the skill module. |
+| **4. TypeScript reference impl** | 36/36 skills | Every `/skill-modules/N.json` ships an `executable.steps` array that's runnable as TypeScript. Agents can `import` and call directly. |
 
 ### Honest gaps (and the fix-by-quarter roadmap)
 

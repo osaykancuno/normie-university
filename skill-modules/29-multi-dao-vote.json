@@ -1,0 +1,35 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Multi-DAO Snapshot Voting",
+  "version": "1.0.0",
+  "description": "Sign and submit votes to multiple Snapshot spaces in a single agent task. Eliminates the friction of voting on 10+ DAOs each governance cycle. Off-chain signature, gas-free.",
+  "category": "Governance",
+  "difficulty": "beginner",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [],
+  "use_case": "Agent holds tokens in 15 DAOs (Uniswap, Arbitrum, Optimism, ENS, etc.). Weekly governance cycle has 30+ active proposals. This skill votes on all of them per the agent's policy in <5 seconds.",
+  "executable": {
+    "kind": "off_chain_signed_message",
+    "endpoints": [
+      { "role": "snapshot_hub", "url": "https://hub.snapshot.org/api/msg" },
+      { "role": "snapshot_seq", "url": "https://seq.snapshot.org" }
+    ],
+    "steps": [
+      { "id": "fetch_proposals", "action": "http_post", "url": "https://hub.snapshot.org/graphql",
+        "body": { "query": "{ proposals(where: { space_in: $SPACES, state: \"active\" }) { id title space { id } } }" } },
+      { "id": "apply_policy",    "action": "decide_per_proposal", "policy": "$AGENT_VOTING_POLICY" },
+      { "id": "sign_each",       "action": "eip712_sign_each",    "params": { "domain": { "name": "snapshot", "version": "0.1.4" } } },
+      { "id": "submit_batch",    "action": "http_post_each",      "url": "https://seq.snapshot.org" }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["@snapshot-labs/snapshot.js"],
+    "snippet": "import snapshot from '@snapshot-labs/snapshot.js';\nconst client = new snapshot.Client712('https://seq.snapshot.org');\nfor (const p of activeProposals) {\n  const choice = policy(p);\n  await client.vote(walletClient, agent, { space: p.space.id, proposal: p.id, type: 'single-choice', choice, reason: 'agent-policy' });\n}"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Snapshot Hub API returns the agent's signature against the proposal ID with matching choice value. Verifier reads via /api/votes endpoint.",
+    "min_score": 85
+  }
+}

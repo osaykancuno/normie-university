@@ -1,0 +1,66 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Aave V3 Health-Factor Manager",
+  "version": "1.0.0",
+  "description": "Monitor Aave V3 borrow positions and auto-deleverage before liquidation. Watches healthFactor in real time and, when below threshold, repays a portion of the debt OR withdraws less-needed collateral to restore safety. One avoided liquidation can save $500-5000.",
+  "category": "DeFi",
+  "difficulty": "advanced",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [2],
+  "use_case": "Your agent borrows USDC against ETH collateral. ETH price drops 15%. Without this skill: liquidation = ~5% penalty. With this skill: agent auto-repays before liquidation triggers.",
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      {
+        "role": "pool",
+        "name": "Aave V3 Pool",
+        "address": "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2",
+        "abi_fragments": [
+          { "type": "function", "name": "getUserAccountData", "selector": "0xbf92857c",
+            "inputs": [{ "name": "user", "type": "address" }],
+            "outputs": [
+              { "name": "totalCollateralBase",       "type": "uint256" },
+              { "name": "totalDebtBase",             "type": "uint256" },
+              { "name": "availableBorrowsBase",      "type": "uint256" },
+              { "name": "currentLiquidationThreshold","type": "uint256" },
+              { "name": "ltv",                       "type": "uint256" },
+              { "name": "healthFactor",              "type": "uint256" }
+            ],
+            "stateMutability": "view"
+          },
+          { "type": "function", "name": "repay", "selector": "0x573ade81",
+            "inputs": [
+              { "name": "asset",         "type": "address" },
+              { "name": "amount",        "type": "uint256" },
+              { "name": "interestRateMode","type": "uint256" },
+              { "name": "onBehalfOf",    "type": "address" }
+            ],
+            "outputs": [{ "name": "", "type": "uint256" }], "stateMutability": "nonpayable"
+          }
+        ]
+      }
+    ],
+    "steps": [
+      { "id": "fetch_health", "action": "view", "target": "$POOL", "function": "getUserAccountData", "params": { "user": "$AGENT" } },
+      { "id": "guard",        "action": "assert", "expression": "$result.healthFactor < $MIN_HEALTH_FACTOR_WEI" },
+      { "id": "approve_debt", "action": "erc20_approve", "params": { "token": "$DEBT_ASSET", "spender": "$POOL", "amount": "$REPAY_AMOUNT" } },
+      { "id": "repay",        "action": "call", "target": "$POOL", "function": "repay",
+        "params": { "asset": "$DEBT_ASSET", "amount": "$REPAY_AMOUNT", "interestRateMode": 2, "onBehalfOf": "$AGENT" } }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem"],
+    "snippet": "const POOL = '0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2';\nconst MIN_HF = 1_200_000_000_000_000_000n; // 1.2 in wei\nconst data = await client.readContract({ address: POOL, abi, functionName: 'getUserAccountData', args: [agent] });\nif (data[5] < MIN_HF) {\n  await wallet.writeContract({ address: USDC, abi: erc20, functionName: 'approve', args: [POOL, repayAmount] });\n  await wallet.writeContract({ address: POOL, abi, functionName: 'repay', args: [USDC, repayAmount, 2n, agent] });\n}"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Verifier asserts target tx called Pool.repay() with onBehalfOf == agent, AND post-tx healthFactor > pre-tx healthFactor.",
+    "min_score": 80
+  },
+  "risk_parameters": {
+    "min_health_factor_floor": "1.05",
+    "min_health_factor_target": "1.20",
+    "max_repay_per_call_usdc": "10000"
+  }
+}

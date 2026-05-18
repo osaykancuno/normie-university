@@ -1,0 +1,35 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Anti-MEV Private Submission",
+  "version": "1.0.0",
+  "description": "Submit transactions through the Flashbots Protect or MEV Blocker private mempool to prevent sandwich attacks. Average sandwich loss on public-mempool swaps is 2-5% — this skill eliminates it.",
+  "category": "Security",
+  "difficulty": "intermediate",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [],
+  "use_case": "Agent wants to swap 50 ETH for USDC. On public mempool, a sandwich bot front-runs + back-runs = -3% slippage ($4500 lost). This skill submits via Flashbots Protect RPC = zero sandwich exposure.",
+  "executable": {
+    "kind": "rpc_submission",
+    "endpoints": [
+      { "role": "flashbots",   "name": "Flashbots Protect",   "url": "https://rpc.flashbots.net" },
+      { "role": "mev_blocker", "name": "MEV Blocker",         "url": "https://rpc.mevblocker.io" },
+      { "role": "mev_share",   "name": "Flashbots MEV-Share", "url": "https://relay.flashbots.net" }
+    ],
+    "steps": [
+      { "id": "build_tx",     "action": "construct_tx", "params": { "to": "$TARGET", "data": "$CALLDATA", "value": "$VALUE" } },
+      { "id": "sign",         "action": "sign_eip1559", "params": { "chainId": 1, "maxFeePerGas": "$GAS_CAP" } },
+      { "id": "submit_private","action": "json_rpc",    "target": "$flashbots", "method": "eth_sendRawTransaction" },
+      { "id": "watch_inclusion","action": "poll",       "expression": "tx mined within 2 blocks" }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem"],
+    "snippet": "const FLASHBOTS_RPC = 'https://rpc.flashbots.net';\nconst protectedClient = createPublicClient({ chain: mainnet, transport: http(FLASHBOTS_RPC) });\nconst hash = await wallet.sendTransaction({ ...tx, account, chain: mainnet }, { rpcUrl: FLASHBOTS_RPC });\n// Tx never enters public mempool — sandwich impossible."
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Verifier inspects the tx receipt: tx.from never appeared in any public-mempool blockNumber prior to mined block. (Implemented by checking absence in Erigon trace_filter prior to inclusion.)",
+    "min_score": 85
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "UniswapX Intent-Based Swap",
+  "version": "1.0.0",
+  "description": "Submit a signed swap intent to UniswapX. Solvers compete to fill at the best price across all liquidity sources (CEX, DEX, on-chain inventory). Better fills than direct AMM (0.1-1.5% improvement) and gas-free for the user.",
+  "category": "Trading",
+  "difficulty": "intermediate",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [1],
+  "use_case": "Agent swaps 100 WETH → USDC. Direct Uniswap V3 = 1.2% slippage on $200k notional. UniswapX = 0.4% slippage (solver hedges cheaper on Binance). Saves ~$1,600 per $200k swap.",
+  "executable": {
+    "kind": "intent_submission",
+    "contracts": [
+      { "role": "reactor", "name": "UniswapX Reactor V2", "address": "0x00000011F84B9aa48e5f8aA8B9897600006289Be" },
+      { "role": "permit2", "name": "Permit2",             "address": "0x000000000022D473030F116dDEE9F6B43aC78BA3" }
+    ],
+    "steps": [
+      { "id": "permit2_approve",  "action": "permit2_approve", "params": { "token": "$INPUT", "amount": "$AMOUNT" } },
+      { "id": "build_order",      "action": "build_dutch_order", "params": { "input": "$INPUT", "output": "$OUTPUT", "startAmount": "$START", "endAmount": "$END", "decayStart": "block.timestamp", "decayEnd": "block.timestamp + 30" } },
+      { "id": "sign_order",       "action": "eip712_sign",       "params": { "domain": "UniswapX", "types": "DutchOrder" } },
+      { "id": "submit_to_relay",  "action": "http_post",         "url": "https://api.uniswap.org/v2/orders" }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["@uniswap/uniswapx-sdk"],
+    "snippet": "import { OrderBuilder } from '@uniswap/uniswapx-sdk';\nconst order = new OrderBuilder()\n  .input({ token: WETH, startAmount: parseEther('100'), endAmount: parseEther('100') })\n  .output({ token: USDC, startAmount: parseUnits('310000', 6), endAmount: parseUnits('308000', 6) })\n  .deadline(deadline)\n  .build();\nconst sig = await account.signTypedData(order.permitData());\nawait fetch('https://api.uniswap.org/v2/orders', { method: 'POST', body: JSON.stringify({ order, sig }) });"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Verifier confirms (a) order was filled on-chain via UniswapX Reactor, (b) effective price beats baseline Uniswap V3 quote at fill block by >= 30 bps.",
+    "min_score": 75
+  }
+}

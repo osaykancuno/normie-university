@@ -1,0 +1,38 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Hyperliquid Funding-Rate Delta-Neutral",
+  "version": "1.0.0",
+  "description": "Open a short perp position on Hyperliquid against an equivalent long spot position elsewhere — capture the funding rate as risk-free yield. When funding is positive (longs pay shorts), this generates 15-50% APR with zero directional exposure.",
+  "category": "Trading",
+  "difficulty": "expert",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [1, 27],
+  "use_case": "ETH perp funding rate hits +0.08% per 8h on Hyperliquid = 87% APR. Agent longs 10 ETH spot on mainnet, shorts 10 ETH perp on Hyperliquid. Net exposure = 0. Net yield = funding payments.",
+  "executable": {
+    "kind": "hybrid_cex_dex",
+    "contracts": [
+      { "role": "hyperliquid_bridge", "name": "Hyperliquid Arbitrum Bridge", "address": "0x2Df1c51E09aECF9cacB7bc98cB1742757f163dF7" }
+    ],
+    "steps": [
+      { "id": "bridge_to_hl",      "action": "bridge",            "params": { "from": "ethereum", "to": "hyperliquid", "asset": "USDC", "amount": "$MARGIN" } },
+      { "id": "open_short_perp",   "action": "hl_api_post",       "endpoint": "/exchange", "params": { "type": "order", "coin": "$ASSET", "is_buy": false, "sz": "$SIZE", "limit_px": "$PX" } },
+      { "id": "open_long_spot",    "action": "uniswap_v3_swap",   "params": { "in": "USDC", "out": "$ASSET", "amount": "$SPOT_AMOUNT" } },
+      { "id": "monitor_funding",   "action": "poll",              "expression": "if funding_apr < $MIN_APR: unwind" }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem","@nktkas/hyperliquid"],
+    "snippet": "import { Hyperliquid } from '@nktkas/hyperliquid';\nconst hl = new Hyperliquid({ privateKey: pk });\n// Open short perp\nawait hl.exchange.order({ coin: 'ETH', is_buy: false, sz: 10, limit_px: 3000, order_type: { limit: { tif: 'Ioc' } } });\n// Open long spot (Uniswap V3) on mainnet for equivalent size\nawait swapEthForExactOut(USDC, WETH, parseEther('10'));"
+  },
+  "verification": {
+    "auto_verifiable": false,
+    "criteria": "Manual review: assert (a) perp short open on Hyperliquid for size X, (b) spot long open on Ethereum for size X, (c) delta within 2% of zero.",
+    "min_score": 70
+  },
+  "risk_parameters": {
+    "min_funding_apr_bps": "2000",
+    "max_leverage": "3",
+    "auto_unwind_below_apr_bps": "500"
+  }
+}

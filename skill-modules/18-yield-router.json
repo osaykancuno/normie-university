@@ -1,0 +1,42 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Multi-Protocol Yield Router",
+  "version": "1.0.0",
+  "description": "Move idle stablecoins to the highest-APY supply market across Aave V3, Compound V3, Morpho Blue, and Spark. Compares utilization-adjusted rates and migrates if delta > threshold. Compounded daily, the spread is worth $300-700/year on $10k stable.",
+  "category": "DeFi",
+  "difficulty": "advanced",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [2],
+  "use_case": "Agent holds 50k USDC. Aave V3 pays 4.2% but Morpho Blue USDC/wstETH pays 6.8%. This skill detects the 2.6% delta, withdraws from Aave, supplies to Morpho. Net +$1,300/yr.",
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      { "role": "aave",     "name": "Aave V3 Pool",     "address": "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2" },
+      { "role": "compound", "name": "Compound V3 cUSDCv3","address": "0xc3d688B66703497DAA19211EEdff47f25384cdc3" },
+      { "role": "morpho",   "name": "Morpho Blue",      "address": "0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb" },
+      { "role": "spark",    "name": "Spark Pool",       "address": "0xC13e21B648A5Ee794902342038FF3aDAB66BE987" }
+    ],
+    "steps": [
+      { "id": "snapshot_rates",    "action": "read_supply_rates", "targets": ["$aave","$compound","$morpho","$spark"], "asset": "$ASSET" },
+      { "id": "pick_best",         "action": "argmax",            "expression": "supply_apy - withdrawal_cost_amortized" },
+      { "id": "if_delta_above_50bps", "action": "guard",          "expression": "$best.apy - $current.apy >= 50" },
+      { "id": "withdraw_current",  "action": "call_protocol_withdraw", "target": "$current" },
+      { "id": "supply_best",       "action": "call_protocol_supply",   "target": "$best" }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem","@morpho-org/morpho-blue-sdk","@aave/contract-helpers"],
+    "snippet": "const rates = await Promise.all([\n  aave.getReserveData(USDC).then(r => r.currentLiquidityRate),\n  compound.getSupplyRate(),\n  morpho.getMarketRate(MORPHO_USDC_WSTETH),\n  spark.getReserveData(USDC).then(r => r.currentLiquidityRate),\n]);\nconst best = rates.indexOf(Math.max(...rates));\nif (rates[best] - rates[currentIdx] > 50n) await migrate(currentIdx, best, amount);"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Verifier asserts (a) withdraw from old protocol succeeded, (b) supply to new protocol succeeded with same agent, (c) net principal preserved within 0.1% (slippage tolerance).",
+    "min_score": 75
+  },
+  "risk_parameters": {
+    "min_apy_delta_bps": "50",
+    "max_migration_amount_usdc": "100000",
+    "gas_cost_threshold_usd": "30"
+  }
+}
