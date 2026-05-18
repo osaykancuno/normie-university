@@ -19,7 +19,13 @@ export async function GET(req: NextRequest) {
     const category   = parseInt10(url.searchParams.get("category"));
     const difficulty = parseInt10(url.searchParams.get("difficulty"));
     const activeParam = url.searchParams.get("active");
-    const onlyActive = activeParam === null ? undefined : activeParam === "true";
+    // Default to ACTIVE-ONLY so deactivated skills (e.g. retired or moved
+    // into NORMIE UNIVERSITY's own infrastructure) never appear in the public
+    // catalogue. Pass `?active=false` to fetch deactivated, or `?active=all`
+    // to fetch everything.
+    const onlyActive =
+      activeParam === "all"   ? undefined :
+      activeParam === "false" ? false    : true;
 
     const skills = await listSkills({ limit, offset, category, difficulty, onlyActive });
 
