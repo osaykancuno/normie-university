@@ -14,7 +14,6 @@
 
 - 🌐 **Live demo**: **https://normie-university.vercel.app** (Ethereum Sepolia)
 - 📦 **Repo**: https://github.com/osaykancuno/normie-university
-- 🎥 **2-min video walkthrough**: _populated after recording — script in `docs/demo-video.md`_
 - 🧠 **Pre-school**: try a Normie persona **without awakening** → [/preview/4354](https://normie-university.vercel.app/preview/4354)
 - 🔍 **Awakened agents directory**: searchable, filterable index → [/agents](https://normie-university.vercel.app/agents)
 - 🤖 **A2A manifest**: [/.well-known/agent.json](https://normie-university.vercel.app/.well-known/agent.json)
@@ -119,7 +118,7 @@ Full runbook: [`docs/deploy.md`](./docs/deploy.md).
 - **Frontend**: Next.js 16 + wagmi 3 + viem 2 + RainbowKit 2 + Tailwind v4
 - **Contracts**: Solidity 0.8.24 + Foundry · viaIR · 189 unit + 5 invariant tests · OpenZeppelin v5
 - **Chain**: Ethereum L1 (Sepolia testnet, Mainnet production)
-- **APIs consumed**: 15 endpoints from api.normies.art (full list in [`SUBMISSION.md`](./SUBMISSION.md))
+- **APIs consumed**: 15 endpoints from api.normies.art (holders, traits, image, agents/info, agents/binding, agents/agent-card, agents/persona-preview, agents/count, agents/list, canvas/info, canvas/diff, history/burns/receiver, history/normie/versions, history/stats, normie/owner)
 
 ---
 
@@ -155,7 +154,7 @@ When an autonomous agent buys a skill, it's trusting that the credential maps to
 ## Roadmap (post-hackathon)
 
 - **NFT-bound credentials via ERC-6551** — v1 anchors Soulbound credentials to the **purchasing wallet** (immutable on-chain). v2 will mint to each Normie's ERC-6551 token-bound account so credentials transparently follow the NFT on sale/transfer. Until then, wallet-bound is intentional: it preserves "I earned this" semantics and protects against reputation hijacking via cheap NFT flips. Read the design note in `contracts/src/core/SkillCredential.sol`.
-- **Skill catalogue expansion** — 39 high-demand candidate skills documented in [`docs/skills-roadmap.md`](./docs/skills-roadmap.md), tiered by ROI: yield routing, anti-MEV, Pendle, Aave health-factor, MCP/A2A, zkML. Ship 4 new skills per quarter, prioritized by community demand signal.
+- **Skill catalogue expansion** — ship 4 new skills per quarter, prioritized by community demand signal (yield routing, anti-MEV, Pendle, Aave health-factor, MCP/A2A, zkML). The first 20 candidates have been audited and 4 of them have shipped in the v1 batch (#37-40).
 - **MCP** — each Normie exposes its acquired skills as callable MCP tools (when Normies ships MCP endpoints)
 - **ERC-8183** — Normies hired for tasks, paid into their agent wallet, NORMIE UNIVERSITY credentials become reputation
 - **UGC v2** — open the catalogue to community creators with $200 bond + curated review
@@ -169,7 +168,6 @@ When an autonomous agent buys a skill, it's trusting that the credential maps to
 - **Hackathon**: [hackathon.normies.art](https://hackathon.normies.art/)
 - **Category**: AI / Agent
 - **License**: MIT — see [`LICENSE`](./LICENSE)
-- **Form-ready answers**: [`SUBMISSION.md`](./SUBMISSION.md)
-- **Built by**: solo + AI co-pilot (see commit history)
+- **Built by**: [@OsayKancuno](https://x.com/OsayKancuno) + AI co-pilot (see commit history)
 
 Special thanks to [@nxt3d](https://x.com/nxt3d) for ERC-8217 + Adapter8004 making this whole flow possible, and to the Normies team for shipping an API that's actually agent-friendly.

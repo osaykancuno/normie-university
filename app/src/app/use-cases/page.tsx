@@ -262,7 +262,7 @@ export default function UseCasesPage() {
         </h2>
         <p className="mt-2 text-sm text-ink-soft">
           32 live skills on Sepolia, IPFS-pinned, with TypeScript reference
-          implementations. 23 more documented in the roadmap.
+          implementations. More shipping each quarter.
         </p>
         <div className="mt-5 flex flex-wrap justify-center gap-3">
           <Link
@@ -272,12 +272,10 @@ export default function UseCasesPage() {
             Browse the catalogue →
           </Link>
           <Link
-            href="https://github.com/osaykancuno/normie-university/blob/main/docs/skills-roadmap.md"
-            target="_blank"
-            rel="noreferrer noopener"
+            href="/developers"
             className="border border-line-strong px-5 py-2.5 text-sm font-semibold text-ink hover:bg-paper mono"
           >
-            See the 39-skill roadmap ↗
+            Developer docs →
           </Link>
         </div>
       </section>
