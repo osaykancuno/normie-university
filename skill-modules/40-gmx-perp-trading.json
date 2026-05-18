@@ -1,0 +1,68 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "GMX V2 Perpetual Trading",
+  "version": "1.0.0",
+  "description": "Open and manage leveraged perpetual positions on GMX V2 (Arbitrum). Long or short BTC/ETH/SOL/etc. with up to 50x leverage. Settlement in stablecoin or native asset. The largest decentralized perp DEX outside of dYdX/Hyperliquid.",
+  "category": "Trading",
+  "difficulty": "advanced",
+  "chain": { "id": 42161, "name": "Arbitrum One" },
+  "prerequisites": [],
+  "use_case": "Agent is bullish ETH but wants leveraged exposure without buying spot (saves capital). Opens a 5x long ETH-PERP on GMX V2 with $5k USDC collateral = $25k notional. Funding rate paid hourly. Auto-stop-loss at -10%.",
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      { "role": "exchange_router", "name": "GMX V2 ExchangeRouter", "address": "0x900173A66dbD345006C51fA35fA3aB760FcD843b",
+        "abi_fragments": [
+          { "type": "function", "name": "sendTokens", "selector": "0x9d6e3a3a",
+            "inputs": [
+              { "name": "token",    "type": "address" },
+              { "name": "receiver", "type": "address" },
+              { "name": "amount",   "type": "uint256" }
+            ],
+            "outputs": [], "stateMutability": "payable"
+          },
+          { "type": "function", "name": "createOrder", "selector": "0x49bdf6da",
+            "inputs": [{
+              "name": "params", "type": "tuple",
+              "components": [
+                { "name": "addresses", "type": "tuple" },
+                { "name": "numbers",   "type": "tuple" },
+                { "name": "orderType", "type": "uint8" },
+                { "name": "decreasePositionSwapType", "type": "uint8" },
+                { "name": "isLong",    "type": "bool"   },
+                { "name": "shouldUnwrapNativeToken", "type": "bool" },
+                { "name": "autoCancel","type": "bool"   },
+                { "name": "referralCode", "type": "bytes32" }
+              ]
+            }],
+            "outputs": [{ "name": "key", "type": "bytes32" }],
+            "stateMutability": "payable"
+          }
+        ]
+      },
+      { "role": "order_vault", "name": "GMX V2 OrderVault", "address": "0x31eF83a530Fde1B38EE9A18093A333D8Bbbc40D5" }
+    ],
+    "steps": [
+      { "id": "approve_collateral", "action": "erc20_approve", "params": { "token": "$COLLATERAL", "spender": "$ROUTER", "amount": "$COLLATERAL_AMT" } },
+      { "id": "send_tokens",        "action": "call", "target": "$ROUTER", "function": "sendTokens",
+        "params": { "token": "$COLLATERAL", "receiver": "$ORDER_VAULT", "amount": "$COLLATERAL_AMT" } },
+      { "id": "create_order",       "action": "call", "target": "$ROUTER", "function": "createOrder",
+        "params": { "params": "$ORDER_PARAMS" }, "value": "$EXECUTION_FEE_ETH" }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem","@gmx-io/sdk"],
+    "snippet": "import { GMXSDK } from '@gmx-io/sdk';\nconst sdk = new GMXSDK({ chainId: 42161, walletClient: wallet });\nconst order = await sdk.orders.createIncreaseOrder({\n  marketAddress: GMX_ETH_USD_MARKET,\n  collateralToken: USDC,\n  initialCollateralAmount: parseUnits('5000', 6),\n  sizeDeltaUsd: parseUnits('25000', 30), // GMX uses 30 decimals\n  isLong: true,\n  triggerPrice: 0n,\n});"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Tx target is GMX ExchangeRouter, OrderCreated event emitted with account == agent, collateral matches sent amount.",
+    "min_score": 75
+  },
+  "risk_parameters": {
+    "max_leverage": "10",
+    "min_collateral_usdc": "100",
+    "max_position_usd": "100000"
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Maker sDAI — DSR Savings",
+  "version": "1.0.0",
+  "description": "Deposit DAI into the Dai Savings Rate via sDAI (ERC-4626 vault). Earns the protocol-set DSR (currently ~5-8% APR) with zero smart-contract complexity beyond an ERC-4626 deposit.",
+  "category": "DeFi",
+  "difficulty": "beginner",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [],
+  "use_case": "Agent has 25k DAI sitting idle. Deposits via sDAI vault → earns DSR (~6% APR) with no liquidation risk, no impermanent loss, fully redeemable at any block. Pure savings rate from MakerDAO treasury.",
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      { "role": "sdai", "name": "sDAI (Savings DAI)", "address": "0x83F20F44975D03b1b09e64809B757c47f942BEeA",
+        "abi_fragments": [
+          { "type": "function", "name": "deposit", "selector": "0x6e553f65",
+            "inputs": [
+              { "name": "assets",   "type": "uint256" },
+              { "name": "receiver", "type": "address" }
+            ],
+            "outputs": [{ "name": "shares", "type": "uint256" }],
+            "stateMutability": "nonpayable"
+          },
+          { "type": "function", "name": "redeem", "selector": "0xba087652",
+            "inputs": [
+              { "name": "shares",   "type": "uint256" },
+              { "name": "receiver", "type": "address" },
+              { "name": "owner",    "type": "address" }
+            ],
+            "outputs": [{ "name": "assets", "type": "uint256" }],
+            "stateMutability": "nonpayable"
+          }
+        ]
+      },
+      { "role": "dai", "name": "DAI", "address": "0x6B175474E89094C44Da98b954EedeAC495271d0F" }
+    ],
+    "steps": [
+      { "id": "approve", "action": "erc20_approve", "params": { "token": "$DAI", "spender": "$SDAI", "amount": "$AMOUNT" } },
+      { "id": "deposit","action": "call", "target": "$SDAI", "function": "deposit", "params": { "assets": "$AMOUNT", "receiver": "$AGENT" } },
+      { "id": "redeem", "action": "call", "target": "$SDAI", "function": "redeem",  "params": { "shares": "$REDEEM_SHARES", "receiver": "$AGENT", "owner": "$AGENT" }, "optional": true }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem"],
+    "snippet": "const SDAI = '0x83F20F44975D03b1b09e64809B757c47f942BEeA';\nconst DAI  = '0x6B175474E89094C44Da98b954EedeAC495271d0F';\nawait wallet.writeContract({ address: DAI,  abi: erc20, functionName: 'approve', args: [SDAI, amount] });\nawait wallet.writeContract({ address: SDAI, abi: erc4626, functionName: 'deposit', args: [amount, agent] });"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Tx target is sDAI, function deposit, receiver == agent. Post-tx sDAI.balanceOf(agent) increased; the share amount matches convertToShares(assets) within rounding.",
+    "min_score": 90
+  }
+}

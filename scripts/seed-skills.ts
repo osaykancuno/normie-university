@@ -137,6 +137,16 @@ const CATALOGUE: Array<{
   { file: "35-eas-attestation.json",         priceInWei: parseEther("0.0012"), priceInUsdc: parseUnits("2.99",  6) },
   // 36 Expert — Tax-loss harvesting
   { file: "36-tax-loss-harvest.json",        priceInWei: parseEther("0.010"),  priceInUsdc: parseUnits("24.99", 6) },
+
+  // ===== Batch 3 — fills the catalogue gaps (Compound, Curve, sDAI, GMX) =====
+  // 37 Beginner — Compound V3 supply (parity with Aave skill #2)
+  { file: "37-compound-v3-supply.json",      priceInWei: parseEther("0.0002"), priceInUsdc: parseUnits("0.49",  6) },
+  // 38 Intermediate — Curve stable LP
+  { file: "38-curve-stable-lp.json",         priceInWei: parseEther("0.0012"), priceInUsdc: parseUnits("2.99",  6) },
+  // 39 Beginner — Maker sDAI / DSR savings
+  { file: "39-maker-sdai-savings.json",      priceInWei: parseEther("0.0002"), priceInUsdc: parseUnits("0.49",  6) },
+  // 40 Advanced — GMX V2 perp trading
+  { file: "40-gmx-perp-trading.json",        priceInWei: parseEther("0.004"),  priceInUsdc: parseUnits("9.99",  6) },
 ];
 
 // SkillRegistry.createSkill ABI fragment

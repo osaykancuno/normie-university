@@ -7,15 +7,38 @@ export function Footer() {
   return (
     <footer className="mt-auto border-t border-line bg-paper">
       <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-4 px-4 py-8 text-xs text-ink-muted sm:flex-row sm:items-center sm:px-6 lg:px-8">
-        <div className="flex items-center gap-2 mono">
-          <span className="font-semibold text-ink">NORMIE UNIVERSITY</span>
-          <span>— the agent academy for living NFTs</span>
+        <div className="flex flex-col items-start gap-1 mono sm:flex-row sm:items-center sm:gap-3">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-ink">NORMIE UNIVERSITY</span>
+            <span className="hidden sm:inline">— the agent academy for living NFTs</span>
+          </div>
+          <span className="hidden text-ink-faint sm:inline">·</span>
+          <span className="text-ink-muted">
+            built by{" "}
+            <a
+              href="https://x.com/OsayKancuno"
+              target="_blank"
+              rel="noreferrer noopener"
+              className="text-ink-soft underline decoration-line-strong decoration-1 underline-offset-2 hover:text-ink"
+            >
+              @OsayKancuno
+            </a>
+          </span>
         </div>
-        <div className="flex items-center gap-6 mono">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mono">
           <Link href="/skills" className="hover:text-ink">Catalogue</Link>
+          <Link href="/use-cases" className="hover:text-ink">Use cases</Link>
           <Link href="/paths" className="hover:text-ink">Paths</Link>
           <Link href="/developers" className="hover:text-ink">Developers</Link>
           <Link href="/community/normies" className="hover:text-ink">Normies</Link>
+          <a
+            href="https://github.com/osaykancuno/normie-university"
+            target="_blank"
+            rel="noreferrer noopener"
+            className="hover:text-ink"
+          >
+            github ↗
+          </a>
           <a
             href="https://normies.art"
             target="_blank"

@@ -1,0 +1,50 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Compound V3 Supply & Withdraw",
+  "version": "1.0.0",
+  "description": "Supply and withdraw on Compound V3 (cUSDCv3 / cWETHv3 / cUSDTv3 markets). Earns interest in the supplied asset with a single contract surface — simpler than V2 and more capital efficient.",
+  "category": "DeFi",
+  "difficulty": "beginner",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [],
+  "use_case": "Agent holds 50k USDC. Wants exposure to Compound but not Aave (diversification). Supplies on cUSDCv3 — earns 3-7% APR with no rebase complexity. Single supply() call, instant interest accrual.",
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      { "role": "cusdcv3", "name": "Compound V3 USDC", "address": "0xc3d688B66703497DAA19211EEdff47f25384cdc3",
+        "abi_fragments": [
+          { "type": "function", "name": "supply", "selector": "0xf2b9fdb8",
+            "inputs": [
+              { "name": "asset",  "type": "address" },
+              { "name": "amount", "type": "uint256" }
+            ],
+            "outputs": [], "stateMutability": "nonpayable"
+          },
+          { "type": "function", "name": "withdraw", "selector": "0xf3fef3a3",
+            "inputs": [
+              { "name": "asset",  "type": "address" },
+              { "name": "amount", "type": "uint256" }
+            ],
+            "outputs": [], "stateMutability": "nonpayable"
+          }
+        ]
+      },
+      { "role": "cwethv3", "name": "Compound V3 WETH", "address": "0xA17581A9E3356d9A858b789D68B4d866e593aE94" }
+    ],
+    "steps": [
+      { "id": "approve",  "action": "erc20_approve", "params": { "token": "$ASSET", "spender": "$COMET", "amount": "$AMOUNT" } },
+      { "id": "supply",   "action": "call", "target": "$COMET", "function": "supply",  "params": { "asset": "$ASSET", "amount": "$AMOUNT" } },
+      { "id": "withdraw", "action": "call", "target": "$COMET", "function": "withdraw","params": { "asset": "$ASSET", "amount": "$WITHDRAW_AMOUNT" }, "optional": true }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem"],
+    "snippet": "const COMET = '0xc3d688B66703497DAA19211EEdff47f25384cdc3';\nawait wallet.writeContract({ address: USDC, abi: erc20, functionName: 'approve', args: [COMET, amount] });\nawait wallet.writeContract({ address: COMET, abi: COMET_ABI, functionName: 'supply', args: [USDC, amount] });"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Tx target is one of the Comet contracts; balanceOf(agent) on Comet > 0 post-tx.",
+    "min_score": 85
+  }
+}

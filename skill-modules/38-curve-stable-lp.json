@@ -1,0 +1,52 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Curve Stable Pool LP",
+  "version": "1.0.0",
+  "description": "Add or remove liquidity on a Curve StableSwap pool (e.g., 3pool, sDAI/USDC, FRAX/USDC). Earns swap fees + CRV emissions. The deepest stablecoin liquidity on Ethereum.",
+  "category": "DeFi",
+  "difficulty": "intermediate",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [],
+  "use_case": "Agent has 30k USDC and 30k DAI. Deposits both into the 3pool LP (FRAX/USDC/USDT). Earns ~3-5% APR from swap fees + ~2-4% extra from CRV emissions if voted on by veCRV.",
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      { "role": "3pool", "name": "Curve 3pool", "address": "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7",
+        "abi_fragments": [
+          { "type": "function", "name": "add_liquidity", "selector": "0x4515cef3",
+            "inputs": [
+              { "name": "amounts",    "type": "uint256[3]" },
+              { "name": "min_mint_amount", "type": "uint256" }
+            ],
+            "outputs": [], "stateMutability": "nonpayable"
+          },
+          { "type": "function", "name": "remove_liquidity_one_coin", "selector": "0x1a4d01d2",
+            "inputs": [
+              { "name": "_burn_amount", "type": "uint256" },
+              { "name": "i",            "type": "int128"  },
+              { "name": "_min_received","type": "uint256" }
+            ],
+            "outputs": [{ "name": "", "type": "uint256" }],
+            "stateMutability": "nonpayable"
+          }
+        ]
+      },
+      { "role": "lp_token", "name": "Curve 3CRV LP", "address": "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490" }
+    ],
+    "steps": [
+      { "id": "approve_each", "action": "erc20_approve_each", "params": { "tokens": ["$DAI","$USDC","$USDT"], "spender": "$POOL" } },
+      { "id": "add_liquidity","action": "call", "target": "$POOL", "function": "add_liquidity",
+        "params": { "amounts": ["$DAI_AMT","$USDC_AMT","$USDT_AMT"], "min_mint_amount": "$MIN_LP" } }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem"],
+    "snippet": "const POOL = '0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7';\nfor (const [t, amt] of [[DAI,daiAmt],[USDC,usdcAmt],[USDT,usdtAmt]]) {\n  await wallet.writeContract({ address: t, abi: erc20, functionName: 'approve', args: [POOL, amt] });\n}\nawait wallet.writeContract({ address: POOL, abi: POOL_ABI, functionName: 'add_liquidity', args: [[daiAmt,usdcAmt,usdtAmt], minLp] });"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Post-tx the agent holds non-zero balance of the pool's LP token AND total tokens deposited matches inputs within 0.1%.",
+    "min_score": 80
+  }
+}
