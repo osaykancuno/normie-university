@@ -58,43 +58,7 @@ export default async function HomePage() {
           </div>
         </div>
 
-        {/* Hero metric — live awakened count.
-            This is our flagship number: 'number of students enrolled at the
-            academy'. Pulses every 30s and re-fetches from api.normies.art. */}
-        <div className="mt-14 grid gap-3 md:grid-cols-[auto_1fr] md:items-end">
-          <div className="border-2 border-line-strong bg-canvas px-6 py-5 md:px-8 md:py-6">
-            <div className="flex items-center gap-2 mono text-[10px] uppercase tracking-wider text-ink-soft">
-              <span className="relative inline-flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[color:var(--accent-ok)] opacity-60" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[color:var(--accent-ok)]" />
-              </span>
-              Live · awakened students
-            </div>
-            <div className="mt-1 text-5xl font-semibold tracking-tight text-ink tabular-nums md:text-6xl">
-              {awakened.toLocaleString()}
-            </div>
-            <div className="mt-1 mono text-[11px] text-ink-muted">
-              of {circulating.toLocaleString()} circulating Normies
-              {burned > 0 && <> · {burned.toLocaleString()} burned</>}
-            </div>
-          </div>
-          <p className="text-sm leading-relaxed text-ink-soft md:pl-8 md:pb-3">
-            Every Normie that goes through Adapter8004 binding becomes an
-            ERC-8004 agent and enrolls here. The number on the left updates
-            every 30 seconds straight from{" "}
-            <a
-              href="https://api.normies.art/agents/count"
-              target="_blank"
-              rel="noreferrer noopener"
-              className="underline hover:text-ink"
-            >
-              api.normies.art
-            </a>
-            .
-          </p>
-        </div>
-
-        <div className="mt-10">
+        <div className="mt-16">
           <PlatformStats />
         </div>
       </section>
