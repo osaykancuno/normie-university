@@ -4,6 +4,7 @@ import { use } from "react";
 import Link from "next/link";
 import { useSkill, type Skill } from "@/hooks/useSkills";
 import { PurchasePanel } from "@/components/skills/PurchasePanel";
+import { SkillContentPreview } from "@/components/skills/SkillContentPreview";
 import { VerificationBadge, VerificationExplainer } from "@/components/skills/VerificationBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -126,20 +127,9 @@ export default function SkillDetailPage({
             </div>
           )}
 
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-ink">Content</h3>
-            {skill.contentURI ? (
-              <a
-                href={toGatewayUrl(skill.contentURI)}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="inline-flex items-center gap-1 text-sm text-ink underline hover:underline"
-              >
-                {skill.contentURI}
-              </a>
-            ) : (
-              <p className="text-sm text-ink-muted">No content URI set.</p>
-            )}
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-ink">Skill module · IPFS-pinned content</h3>
+            <SkillContentPreview skillId={skill.skillId} />
           </div>
 
           <div className="rounded-none border border-line bg-surface p-5 text-sm text-ink-soft">
@@ -202,10 +192,3 @@ function Stat({
   );
 }
 
-/// If a URI looks like ipfs://… resolve to a public gateway for easy preview.
-function toGatewayUrl(uri: string): string {
-  if (uri.startsWith("ipfs://")) {
-    return `https://ipfs.io/ipfs/${uri.slice("ipfs://".length)}`;
-  }
-  return uri;
-}

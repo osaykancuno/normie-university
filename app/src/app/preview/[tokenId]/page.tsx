@@ -2,7 +2,7 @@
 
 import { use, useMemo } from "react";
 import Link from "next/link";
-import { usePersonaPreview, useCanvasFeed } from "@/hooks/useNormies";
+import { usePersonaPreview, useCanvasFeed, usePersona } from "@/hooks/useNormies";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,6 +21,11 @@ export default function PreviewPage({
 
   const { data: preview, isLoading, error } = usePersonaPreview(validId ? id : undefined);
   const { data: canvas } = useCanvasFeed(validId ? id : undefined, 120_000);
+  // Also check if this Normie is already awakened — Zori #4354, Yoko #8362, etc.
+  // If so, surface the AWAKENED state + link to the full profile.
+  const { data: agentRes } = usePersona(validId ? id : undefined);
+  const isAwakened = !!agentRes?.binding?.bound;
+  const agentId = agentRes?.binding?.agentId;
 
   // Compute trait-driven recommended skills + path (uses the same heuristic
   // as TraitRecommendations but applied to the preview's persona).
@@ -96,8 +101,27 @@ export default function PreviewPage({
             <CardContent className="space-y-3 p-5">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge>Preview</Badge>
-                <Badge variant="outline">Not yet awakened</Badge>
+                {isAwakened ? (
+                  <Badge variant="success">Already awakened</Badge>
+                ) : (
+                  <Badge variant="outline">Not yet awakened</Badge>
+                )}
+                {persona?.type && <Badge variant="outline">{persona.type}</Badge>}
               </div>
+              {isAwakened && agentId && (
+                <div className="border border-line bg-paper p-2.5 text-[11px] leading-relaxed">
+                  <span className="mono uppercase tracking-wider text-ink-muted">
+                    ERC-8004 agent #{agentId}
+                  </span>{" "}
+                  — already bound on-chain.{" "}
+                  <Link
+                    href={`/agents/normie/${id}`}
+                    className="text-ink underline hover:opacity-70"
+                  >
+                    View live profile →
+                  </Link>
+                </div>
+              )}
               <div>
                 <h1 className="text-3xl font-semibold tracking-tight text-ink">
                   {persona.name}
