@@ -46,3 +46,8 @@ contracts/broadcast/
 # Local-only operator scripts
 DEPLOY-NOW.md
 app/e2e-test.mjs
+app/audit-skill-links.mjs
+app/audit-api-wiring.mjs
+app/seed-batch*.ts
+app/deactivate-*.ts
+app/update-skills-*.ts

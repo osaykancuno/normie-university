@@ -39,5 +39,3 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-app/audit-api-wiring.mjs
-app/audit-skill-links.mjs
