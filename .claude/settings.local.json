@@ -119,7 +119,13 @@
       "Bash(grep -oE \"<main[^>]*>.{0,500}\" /tmp/full.html)",
       "Bash(curl -s -w \"\\\\n[%{http_code}]\" --max-time 30 \"https://normie-university.vercel.app/api/normies/burns/4354\")",
       "Bash(curl -s -w \"\\\\n[%{http_code}]\" --max-time 30 \"https://normie-university.vercel.app/api/normies/canvas/4354\")",
-      "Bash(curl -s --max-time 30 \"https://normie-university.vercel.app/api/normies/agent/4354\")"
+      "Bash(curl -s --max-time 30 \"https://normie-university.vercel.app/api/normies/agent/4354\")",
+      "Bash(curl -s --max-time 30 \"https://normie-university.vercel.app/agents/normie/4354?_=$\\(date +%s\\)\")",
+      "Bash(curl -s --max-time 60 \"https://normie-university.vercel.app/agents/normie/4354?_=$\\(date +%s\\)\" -o /tmp/page.html)",
+      "Bash(npm i *)",
+      "Bash(npx playwright *)",
+      "Bash(node e2e-test.mjs)",
+      "Bash(curl -s \"https://normie-university.vercel.app/api/normies/agent/4354\")"
     ]
   }
 }

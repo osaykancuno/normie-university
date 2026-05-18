@@ -69,7 +69,7 @@ export function PersonaCard({ address }: { address: `0x${string}` | undefined })
             Personality
           </div>
           <ul className="space-y-1 text-sm leading-relaxed text-ink-soft">
-            {p.personality.slice(0, 4).map((line, i) => (
+            {(p.personalityTraits ?? p.personality ?? []).slice(0, 4).map((line, i) => (
               <li key={i} className="flex gap-2">
                 <span className="text-ink underline">·</span>
                 <span>{line}</span>

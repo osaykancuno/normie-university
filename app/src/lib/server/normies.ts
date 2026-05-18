@@ -168,10 +168,11 @@ export type PersonaInfo = {
   tagline: string;         // e.g. "Pixel-born philosopher"
   archetype: string;       // e.g. "people-first, with quiet emotional depth"
   type: string;            // Human / Cat / Alien / Agent
-  personality: string[];   // 8 trait-derived lines
+  personality?: string[];        // legacy alias
+  personalityTraits?: string[];  // actual API field name
   communicationStyle: string;
-  quirks: string[];        // 6 mannerisms
-  backstory: string[];     // origin + customized + level variants
+  quirks: string[];              // 6 mannerisms
+  backstory: string;             // single paragraph from Normies API
   greeting: string;
   canvas: {
     level: number;

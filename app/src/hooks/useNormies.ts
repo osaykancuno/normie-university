@@ -32,10 +32,11 @@ export type Persona = {
   tagline: string;
   archetype: string;
   type: string;
-  personality: string[];
+  personality?: string[];        // legacy alias (some endpoints)
+  personalityTraits?: string[];  // actual API field
   communicationStyle: string;
   quirks: string[];
-  backstory: string[];
+  backstory: string;             // API returns a single string paragraph, not array
   greeting: string;
   canvas: {
     level: number;

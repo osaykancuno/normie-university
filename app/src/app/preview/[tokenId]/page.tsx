@@ -159,7 +159,7 @@ export default function PreviewPage({
                 Personality · 8 layers
               </div>
               <ul className="space-y-2 text-sm text-ink">
-                {persona.personality?.map((p, i) => (
+                {(persona.personalityTraits ?? persona.personality ?? []).map((p, i) => (
                   <li key={i} className="flex gap-3">
                     <span className="mono text-ink-muted">0{i + 1}</span>
                     <span>{p}</span>
@@ -201,15 +201,18 @@ export default function PreviewPage({
             </Card>
           )}
 
-          {/* Backstory */}
-          {persona.backstory && persona.backstory.length > 0 && (
+          {/* Backstory — API returns a single paragraph string */}
+          {persona.backstory && (
             <Card>
               <CardContent className="p-6">
                 <div className="mb-3 mono text-[10px] uppercase tracking-wider text-ink-muted">
                   Backstory
                 </div>
-                <div className="space-y-2 text-sm text-ink-soft">
-                  {persona.backstory.map((b, i) => (
+                <div className="space-y-2 text-sm leading-relaxed text-ink-soft">
+                  {(Array.isArray(persona.backstory)
+                    ? (persona.backstory as string[])
+                    : String(persona.backstory).split(/\n+/).filter(Boolean)
+                  ).map((b, i) => (
                     <p key={i}>{b}</p>
                   ))}
                 </div>
