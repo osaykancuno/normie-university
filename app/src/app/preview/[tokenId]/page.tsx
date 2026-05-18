@@ -72,7 +72,18 @@ export default function PreviewPage({
     );
   }
 
-  const persona = preview.persona;
+  // Choose canvas/persona data source:
+  // - For NOT-AWAKENED Normies, persona-preview endpoint returns persona but
+  //   NO canvas data (canvas is undefined). useCanvasFeed fills it.
+  // - For ALREADY-AWAKENED, the /agents/info endpoint returns full persona
+  //   WITH canvas state — use that since it's the authoritative source.
+  const persona = isAwakened && agentRes?.persona ? agentRes.persona : preview.persona;
+
+  // Live canvas (level, AP, customized, pixel diff). Prefer agentRes.canvas
+  // for awakened tokens, fallback to the canvas-feed endpoint for raw stats.
+  const canvasInfo = persona.canvas ?? canvas?.info ?? null;
+  const canvasDiff = persona.canvas?.diff ?? canvas?.diff ?? null;
+
   const lastTransform = canvas?.lastTransformAt
     ? new Date(canvas.lastTransformAt * 1000)
     : null;
@@ -137,20 +148,20 @@ export default function PreviewPage({
               )}
               <div className="rule" />
               <div className="grid grid-cols-2 gap-3 text-xs">
-                <Stat label="Level" value={persona.canvas?.level ?? "—"} />
-                <Stat label="AP" value={persona.canvas?.actionPoints ?? "—"} />
+                <Stat label="Level" value={canvasInfo?.level ?? "—"} />
+                <Stat label="AP" value={canvasInfo?.actionPoints ?? "—"} />
                 <Stat
                   label="Customized"
-                  value={persona.canvas?.customized ? "yes" : "no"}
+                  value={canvasInfo?.customized ? "yes" : "no"}
                 />
                 <Stat label="Transforms" value={transformations} />
                 <Stat
                   label="Pixels +"
-                  value={persona.canvas?.diff?.addedCount ?? 0}
+                  value={canvasDiff?.addedCount ?? 0}
                 />
                 <Stat
                   label="Pixels −"
-                  value={persona.canvas?.diff?.removedCount ?? 0}
+                  value={canvasDiff?.removedCount ?? 0}
                 />
               </div>
               {lastTransform && (
