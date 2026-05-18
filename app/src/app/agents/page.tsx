@@ -34,16 +34,30 @@ export default function AgentsDirectoryPage() {
   const { data: lb } = useLeaderboard(12);
   const [lbAddrs, lbScores] = (lb as [readonly `0x${string}`[], readonly bigint[]] | undefined) ?? [[], []];
 
-  // Live: pull the 12 most recently awakened Normies from the Normies API.
-  // Guarantees every linked card resolves to a real, non-burned token.
-  const awakened = useAwakenedList(12);
+  // Live: pull the most recent awakened Normies from the Normies API.
+  // We fetch a wide pool (100) and filter by type SERVER-SIDE using the
+  // type field already present in /agents/list. Without this, filtering by
+  // 'Agent' / 'Cat' / 'Alien' would show 0 results because the most recent
+  // dozen awakenings are typically all Human.
+  const awakened = useAwakenedList(100);
   const collectionStats = useCollectionStats();
 
   const filteredFeatured = useMemo(() => {
-    if (awakened.length > 0) {
-      return awakened.map((a) => Number(a.tokenId));
-    }
-    return FALLBACK_FEATURED;
+    if (awakened.length === 0) return FALLBACK_FEATURED;
+    // Pre-filter by type using the data the awakened-list endpoint already
+    // returns (no extra fetch needed). Level/canvas filters still apply at
+    // the card level.
+    const byType = typeF === "all"
+      ? awakened
+      : awakened.filter((a) => a.type === typeF);
+    // Cap to 24 displayed cards to keep the grid manageable.
+    return byType.slice(0, 24).map((a) => Number(a.tokenId));
+  }, [awakened, typeF]);
+
+  const typeFilterCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: awakened.length };
+    for (const a of awakened) counts[a.type] = (counts[a.type] ?? 0) + 1;
+    return counts;
   }, [awakened]);
 
   const onLookup = (e: React.FormEvent) => {
@@ -118,11 +132,17 @@ export default function AgentsDirectoryPage() {
       {/* Filters */}
       <div className="mb-6 flex flex-wrap items-center gap-2 border border-line bg-surface p-4">
         <FilterGroup label="Type">
-          {(["all", "Human", "Cat", "Alien", "Agent"] as TypeFilter[]).map((t) => (
-            <Pill key={t} active={typeF === t} onClick={() => setTypeF(t)}>
-              {t}
-            </Pill>
-          ))}
+          {(["all", "Human", "Cat", "Alien", "Agent"] as TypeFilter[]).map((t) => {
+            const c = typeFilterCounts[t] ?? 0;
+            return (
+              <Pill key={t} active={typeF === t} onClick={() => setTypeF(t)}>
+                {t}
+                {awakened.length > 0 && (
+                  <span className="ml-1 text-[10px] text-ink-faint">{c}</span>
+                )}
+              </Pill>
+            );
+          })}
         </FilterGroup>
         <Divider />
         <FilterGroup label="Level">
@@ -151,17 +171,38 @@ export default function AgentsDirectoryPage() {
           → Pre-school: preview any Normie
         </Link>
       </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {filteredFeatured.map((id) => (
-          <AgentDirectoryCard
-            key={id}
-            tokenId={id}
-            typeFilter={typeF}
-            levelFilter={levelF}
-            stateFilter={stateF}
-          />
-        ))}
-      </div>
+      {filteredFeatured.length === 0 ? (
+        <div className="border border-line bg-surface p-8 text-center">
+          <p className="text-sm text-ink-soft">
+            No <span className="font-medium text-ink">{typeF}</span> Normies have awakened
+            in the latest {awakened.length} agents fetched from the Normies API.
+          </p>
+          <p className="mt-1 text-xs text-ink-muted">
+            Of the latest pool:{" "}
+            {(["Human", "Cat", "Alien", "Agent"] as const).map((t, i, arr) => (
+              <span key={t}>
+                <span className="mono">
+                  {typeFilterCounts[t] ?? 0} {t}
+                </span>
+                {i < arr.length - 1 && " · "}
+              </span>
+            ))}
+            . Try a different type or search a specific token id above.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {filteredFeatured.map((id) => (
+            <AgentDirectoryCard
+              key={id}
+              tokenId={id}
+              typeFilter={typeF}
+              levelFilter={levelF}
+              stateFilter={stateF}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Top by reputation */}
       <div className="mt-12">
