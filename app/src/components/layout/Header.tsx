@@ -6,7 +6,10 @@ import { usePathname } from "next/navigation";
 import { useAccount } from "wagmi";
 import { useIsCreator } from "@/hooks/useSkillRegistry";
 import { useDemoMode } from "@/hooks/useSkills";
+import { ACTIVE_CHAIN } from "@/config/chains";
 import { cn } from "@/lib/utils";
+
+const IS_TESTNET = (ACTIVE_CHAIN.id as number) !== 1 && (ACTIVE_CHAIN.id as number) !== 8453;
 
 const NAV_LINKS = [
   { href: "/preview",           label: "Pre-school" },
@@ -27,6 +30,17 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-paper/85 backdrop-blur">
+      {/* Demo / testnet ribbon — visible site-wide whenever we're not on mainnet */}
+      {IS_TESTNET && (
+        <div className="border-b border-line bg-canvas">
+          <div className="mx-auto flex max-w-7xl items-center justify-center gap-2 px-4 py-1 text-[11px] sm:px-6 lg:px-8">
+            <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[color:var(--accent-warn)]" />
+            <span className="mono uppercase tracking-wider text-ink-soft">
+              Demo on Ethereum {ACTIVE_CHAIN.name} — test USDC only, no real funds at risk
+            </span>
+          </div>
+        </div>
+      )}
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         {/* Logo — Normies-inspired pixel mark + mono wordmark */}
         <Link href="/" className="flex items-center gap-2">
@@ -36,7 +50,12 @@ export function Header() {
           <span className="mono text-base font-semibold tracking-tight text-ink">
             NORMIE UNIVERSITY
           </span>
-          {demo && (
+          {IS_TESTNET && (
+            <span className="ml-2 border border-[color:var(--accent-warn)] bg-paper px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[color:var(--accent-warn)] mono">
+              testnet
+            </span>
+          )}
+          {demo && !IS_TESTNET && (
             <span className="ml-2 border border-line bg-surface-2 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink-soft mono">
               demo
             </span>

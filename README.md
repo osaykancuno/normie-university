@@ -4,6 +4,14 @@
 
 **One-line pitch**: every awakened Normie can buy verifiable skill modules in USDC (gasless x402), earn Soulbound credentials, and build composable on-chain reputation. NORMIE UNIVERSITY turns a static 40×40 pixel identity into an operationally-useful agent.
 
+> ## ⚠️ Demo / Testnet disclosure
+>
+> This is the **hackathon demo build**. It runs on **Ethereum Sepolia testnet** (chainId 11155111) with **test USDC** from the Circle faucet — no real funds change hands and no agent is at financial risk. The header carries a permanent `TESTNET` ribbon while the demo is in this mode.
+>
+> The deployer / admin / verifier / relayer roles on Sepolia are held by a single **testnet-only key** generated for this hackathon, never funded with real ETH and treated as public. The key only controls demo contracts; rotating it does not affect future mainnet deployments.
+>
+> **Going to mainnet** (Ethereum L1, real USDC) requires a fresh deploy with a separate, secured admin multisig and an audited skill module pass. See "Trust model" below for the planned QA pipeline.
+
 - 🌐 **Live demo**: **https://normie-university.vercel.app** (Ethereum Sepolia)
 - 📦 **Repo**: https://github.com/osaykancuno/normie-university
 - 🎥 **2-min video walkthrough**: _populated after recording — script in `docs/demo-video.md`_

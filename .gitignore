@@ -34,3 +34,15 @@ lcov.info
 
 # Misc
 *.log
+
+# Claude Code session/permission cache — may contain bash command history
+# with secrets accidentally pasted as args
+.claude/
+
+# Local deploy artifacts that include the deployer env snippet
+contracts/deployments/*.env
+contracts/broadcast/
+
+# Local-only operator scripts
+DEPLOY-NOW.md
+app/e2e-test.mjs

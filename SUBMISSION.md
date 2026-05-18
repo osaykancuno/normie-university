@@ -2,6 +2,12 @@
 
 Form URL: https://hackathon.normies.art
 
+> **Demo / testnet build.** Everything described below runs on Ethereum Sepolia
+> with test USDC. The admin/deployer/verifier key on Sepolia is a single
+> hackathon-only key, never funded with real ETH, treated as public.
+> Mainnet release will be a separate deploy under a multisig — see the
+> "Trust model" section in the README.
+
 ---
 
 ## Project Name

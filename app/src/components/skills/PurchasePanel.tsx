@@ -5,6 +5,7 @@ import { useAccount, useWaitForTransactionReceipt } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { maxUint256 } from "viem";
 import { useDemoMode } from "@/hooks/useSkills";
+import { ACTIVE_CHAIN } from "@/config/chains";
 import {
   usePurchaseSkill,
   usePurchaseSkillWithUsdc,
@@ -20,6 +21,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatEth, formatUsdc } from "@/lib/format";
 import { cn } from "@/lib/utils";
+
+const IS_TESTNET = (ACTIVE_CHAIN.id as number) !== 1 && (ACTIVE_CHAIN.id as number) !== 8453;
 
 type Tab = "eth" | "usdc";
 
@@ -155,6 +158,15 @@ export function PurchasePanel({ skill }: { skill: Skill }) {
 
   return (
     <div className="space-y-4 rounded-none border border-line bg-surface p-5">
+      {IS_TESTNET && (
+        <div className="border border-[color:var(--accent-warn)] bg-paper p-2.5 text-[11px] leading-relaxed text-ink-soft">
+          <span className="mono uppercase tracking-wider text-[color:var(--accent-warn)]">
+            ⚠ Testnet purchase
+          </span>{" "}
+          — pays in test USDC from the Circle faucet (no real value). The
+          credential mints on Sepolia and is valid for demo only.
+        </div>
+      )}
       {/* Tabs */}
       <div className="flex gap-2">
         {offersEth && (
