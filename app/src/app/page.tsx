@@ -3,8 +3,17 @@ import { PlatformStats } from "@/components/home/PlatformStats";
 import { FeaturedPaths } from "@/components/home/FeaturedPaths";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { getCollectionStats } from "@/lib/server/normies";
 
-export default function HomePage() {
+// Live numbers — Normies has an ongoing burn process, so supply is NOT static.
+export const revalidate = 60;
+
+export default async function HomePage() {
+  // Best-effort live fetch; on failure fall back to last-known-good numbers.
+  const stats = await getCollectionStats().catch(() => null);
+  const circulating  = stats?.circulatingSupply ?? 8149;
+  const awakened     = stats?.awakenedCount ?? 529;
+  const burned       = stats?.burnedCount ?? 1851;
   return (
     <div className="relative">
       {/* Hero — Normies-style monochrome, generous whitespace */}
@@ -30,8 +39,12 @@ export default function HomePage() {
             <Link href="https://normies.art" className="underline hover:text-ink" target="_blank" rel="noreferrer noopener">
               Normies
             </Link>{" "}
-            (10,000 awakened ERC-8004 agents) and ready for any living NFT
-            collection. Deployed on Ethereum mainnet.
+            — <strong className="text-ink">{circulating.toLocaleString()}</strong>{" "}
+            circulating Normies, of which{" "}
+            <strong className="text-ink">{awakened.toLocaleString()}</strong>{" "}
+            are already awakened as ERC-8004 agents{burned > 0 ? (
+              <span> ({burned.toLocaleString()} permanently burned)</span>
+            ) : null}. Ready for any living NFT collection on Ethereum L1.
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <Link href="/skills">

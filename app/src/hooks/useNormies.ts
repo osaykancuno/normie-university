@@ -291,3 +291,49 @@ export function useBurnHistory(tokenId: string | number | undefined) {
 
   return { data, isLoading };
 }
+
+// ===========================================================================
+// Collection-wide stats (live — adjusts for ongoing burns)
+// ===========================================================================
+export type CollectionStats = {
+  originalSupply: number;
+  burnedCount: number;
+  circulatingSupply: number;
+  awakenedCount: number;
+  totalTransforms: number;
+  totalBurnCommitments: number;
+  totalActionPointsDistributed: string;
+};
+
+export function useCollectionStats() {
+  const [data, setData] = useState<CollectionStats | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/normies/collection-stats")
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && !d?.error) setData(d); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+  return data;
+}
+
+export type AwakenedAgentSummary = {
+  agentId: string;
+  tokenId: string;
+  name: string;
+  type: string;
+};
+
+export function useAwakenedList(limit = 24) {
+  const [data, setData] = useState<AwakenedAgentSummary[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/normies/awakened-list?limit=${limit}`)
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && Array.isArray(d?.items)) setData(d.items); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [limit]);
+  return data;
+}

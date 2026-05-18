@@ -320,3 +320,74 @@ export async function getBurnsReceivedBy(
     return [];
   }
 }
+
+// ===========================================================================
+// Collection-wide live stats. Real numbers — supply changes as burns happen.
+// ===========================================================================
+
+export type CollectionStats = {
+  originalSupply: number;       // 10000 (immutable mint cap)
+  burnedCount: number;          // tokens permanently burned
+  circulatingSupply: number;    // originalSupply - burnedCount
+  awakenedCount: number;        // ERC-8004 agentIds bound to a Normie
+  totalTransforms: number;
+  totalBurnCommitments: number;
+  totalActionPointsDistributed: string;
+};
+
+export async function getCollectionStats(): Promise<CollectionStats> {
+  return cachedFetch("collection-stats", 60_000, async () => {
+    const [statsRes, countRes] = await Promise.all([
+      fetch(`${NORMIES_API}/history/stats`, { headers: { accept: "application/json" } }),
+      fetch(`${NORMIES_API}/agents/count`, { headers: { accept: "application/json" } }),
+    ]);
+    const stats = statsRes.ok ? await statsRes.json() : {};
+    const count = countRes.ok ? await countRes.json() : { count: 0 };
+    const originalSupply = Number(stats.totalTokenData ?? 10000);
+    const burnedCount    = Number(stats.totalBurnedTokens ?? 0);
+    return {
+      originalSupply,
+      burnedCount,
+      circulatingSupply: Math.max(0, originalSupply - burnedCount),
+      awakenedCount: Number(count.count ?? 0),
+      totalTransforms: Number(stats.totalTransforms ?? 0),
+      totalBurnCommitments: Number(stats.totalBurnCommitments ?? 0),
+      totalActionPointsDistributed: String(stats.totalActionPointsDistributed ?? "0"),
+    };
+  });
+}
+
+export type AwakenedAgentSummary = {
+  agentId: string;
+  tokenId: string;
+  name: string;
+  type: string;
+  registeredBy: string;
+  registeredAt: string;
+};
+
+export async function getAwakenedList(limit = 24): Promise<AwakenedAgentSummary[]> {
+  return cachedFetch(`awakened-list:${limit}`, 60_000, async () => {
+    try {
+      const res = await fetch(`${NORMIES_API}/agents/list?limit=${limit}`, {
+        headers: { accept: "application/json" },
+      });
+      if (!res.ok) return [];
+      const j = await res.json();
+      return (j.items ?? []) as AwakenedAgentSummary[];
+    } catch { return []; }
+  });
+}
+
+export async function isTokenBurned(tokenId: string | number): Promise<boolean> {
+  // Cheapest probe: /normie/{id}/owner returns 404 if burned/non-existent.
+  // Cache for 5 min — burns are infrequent and we want to avoid hammering.
+  return cachedFetch(`burned:${tokenId}`, 300_000, async () => {
+    try {
+      const res = await fetch(`${NORMIES_API}/normie/${tokenId}/owner`, {
+        headers: { accept: "application/json" },
+      });
+      return res.status === 404;
+    } catch { return false; }
+  });
+}

@@ -94,8 +94,8 @@ export function OnboardingWizard() {
               </p>
               <p className="text-xs leading-relaxed text-ink-muted">
                 Native to <strong className="text-ink-soft">Normies</strong>{" "}
-                (10,000 ERC-8004 awakened agents) and ready for any living NFT
-                collection. Deployed on Ethereum L1.
+                — an ERC-8004 awakened-agent collection on Ethereum L1 (live
+                supply adjusted for ongoing burn). Ready for any living NFT.
               </p>
               <div className="flex justify-end">
                 <Button onClick={() => setStep(2)}>Enter →</Button>

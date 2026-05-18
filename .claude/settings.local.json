@@ -125,7 +125,11 @@
       "Bash(npm i *)",
       "Bash(npx playwright *)",
       "Bash(node e2e-test.mjs)",
-      "Bash(curl -s \"https://normie-university.vercel.app/api/normies/agent/4354\")"
+      "Bash(curl -s \"https://normie-university.vercel.app/api/normies/agent/4354\")",
+      "Bash(curl -s \"https://normie-university.vercel.app/api/normies/agent/42\")",
+      "Bash(curl -s \"https://normie-university.vercel.app/api/normies/normie/42\")",
+      "Bash(curl -s \"https://api.normies.art/\")",
+      "Bash(curl -s --max-time 15 https://api.normies.art__TRACKED_VAR__)"
     ]
   }
 }

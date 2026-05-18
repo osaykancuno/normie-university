@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { isAddress } from "viem";
 import { useTotalTrackedAgents, useLeaderboard } from "@/hooks/useReputation";
+import { useAwakenedList, useCollectionStats } from "@/hooks/useNormies";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,13 +13,9 @@ import { formatReputation, shortAddress } from "@/lib/format";
 import { AgentDirectoryCard } from "@/components/agents/AgentDirectoryCard";
 import { cn } from "@/lib/utils";
 
-/// Curated set of Normie token ids surfaced as "featured agents" in the
-/// directory. Each card pulls its persona live from the Normies API and
-/// renders pixel art + name + tagline + level. Covers all 4 types.
-const FEATURED_NORMIES: number[] = [
-  42, 100, 1337, 4354, 7777, 9001,
-  1, 256, 512, 2048, 3333, 5555,
-];
+/// Fallback only — used while the live awakened list is loading or if the
+/// Normies API is down. Real list is fetched from /api/normies/awakened-list.
+const FALLBACK_FEATURED: number[] = [4354, 5506, 1141, 1337];
 
 type TypeFilter = "all" | "Human" | "Cat" | "Alien" | "Agent";
 type LevelFilter = "all" | "1" | "2" | "3+";
@@ -37,11 +34,17 @@ export default function AgentsDirectoryPage() {
   const { data: lb } = useLeaderboard(12);
   const [lbAddrs, lbScores] = (lb as [readonly `0x${string}`[], readonly bigint[]] | undefined) ?? [[], []];
 
+  // Live: pull the 12 most recently awakened Normies from the Normies API.
+  // Guarantees every linked card resolves to a real, non-burned token.
+  const awakened = useAwakenedList(12);
+  const collectionStats = useCollectionStats();
+
   const filteredFeatured = useMemo(() => {
-    // We use indexes; actual filter happens at card-level using the persona it fetches.
-    // For now we pass filters down and each card decides whether to render.
-    return FEATURED_NORMIES;
-  }, []);
+    if (awakened.length > 0) {
+      return awakened.map((a) => Number(a.tokenId));
+    }
+    return FALLBACK_FEATURED;
+  }, [awakened]);
 
   const onLookup = (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,6 +81,18 @@ export default function AgentsDirectoryPage() {
           Searchable index of ERC-8004 agents — filtered by type, level, and
           customization state. Live persona data pulled from{" "}
           <a href="https://api.normies.art" target="_blank" rel="noreferrer noopener" className="underline hover:text-ink">api.normies.art</a>.
+          {collectionStats && (
+            <>
+              {" "}
+              <span className="mono">{collectionStats.awakenedCount.toLocaleString()}</span>{" "}
+              awakened of{" "}
+              <span className="mono">{collectionStats.circulatingSupply.toLocaleString()}</span>{" "}
+              circulating
+              {collectionStats.burnedCount > 0 && (
+                <> ({collectionStats.burnedCount.toLocaleString()} burned)</>
+              )}.
+            </>
+          )}
           {totalTracked !== undefined && (
             <> NORMIE UNIVERSITY tracks <span className="mono">{(totalTracked as bigint).toString()}</span> ranked agents.</>
           )}

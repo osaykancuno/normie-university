@@ -2,7 +2,7 @@
 
 import { use, useMemo } from "react";
 import Link from "next/link";
-import { usePersona, useCanvasFeed, useBurnHistory, useNormie } from "@/hooks/useNormies";
+import { usePersona, usePersonaPreview, useCanvasFeed, useBurnHistory, useNormie } from "@/hooks/useNormies";
 import { useAgentSkills } from "@/hooks/useCredentials";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,10 +23,20 @@ export default function NormieAgentProfilePage({
   const id = Number(tokenId);
   const validId = Number.isInteger(id) && id >= 0 && id <= 9999;
 
-  const { data: personaRes } = usePersona(validId ? id : undefined);
+  // Try the awakened-agent endpoint first; if the Normie is not awakened (or
+  // has been burned) /api/normies/agent/[id] returns 404 and the hook errors —
+  // we then fall back to the persona-preview which works for any minted token.
+  const { data: personaRes, error: personaErr } = usePersona(validId ? id : undefined);
+  const { data: preview }    = usePersonaPreview(
+    validId && personaErr ? id : undefined
+  );
   const { data: canvas }     = useCanvasFeed(validId ? id : undefined, 60_000);
   const { data: burns }      = useBurnHistory(validId ? id : undefined);
-  const { data: normieMeta } = useNormie(validId ? id : undefined);
+  const { data: normieMeta, error: normieErr } = useNormie(validId ? id : undefined);
+
+  // Detect a burned/non-existent token: both owner lookup and persona fail.
+  const isBurnedOrGone =
+    validId && normieErr && personaErr && !preview;
   const ownerAddr = normieMeta?.owner;
   // v1 design: SkillCredential is mapping(wallet => skills). We show the skills
   // owned by the *current* holder wallet of this Normie. If the NFT is sold,
@@ -46,19 +56,47 @@ export default function NormieAgentProfilePage({
   if (!validId) {
     return (
       <Shell>
-        <Err>Invalid Normie token id (0–9999).</Err>
+        <Err>Invalid Normie token id (range 0–9999).</Err>
       </Shell>
     );
   }
-  if (!personaRes) {
+  if (isBurnedOrGone) {
+    return (
+      <Shell>
+        <div className="mx-auto max-w-xl border border-line bg-surface p-8 text-center">
+          <h1 className="text-2xl font-semibold text-ink">Normie #{id} is not here.</h1>
+          <p className="mt-2 text-sm text-ink-soft">
+            This token has been permanently burned in the Normies burn-commit
+            flow, or never existed. Burned Normies are removed from circulation —
+            their pixel mass is redistributed as Action Points to surviving
+            Normies via the receiver mechanism.
+          </p>
+          <div className="mt-5 flex justify-center gap-3">
+            <Link href="/agents" className="mono text-xs text-ink underline">← back to directory</Link>
+            <Link href="/preview" className="mono text-xs text-ink underline">try Pre-school</Link>
+          </div>
+        </div>
+      </Shell>
+    );
+  }
+  // Loading state — wait for either the awakened or the preview endpoint
+  if (!personaRes && !preview) {
     return (
       <Shell>
         <div className="h-96 animate-pulse border border-line bg-surface" />
       </Shell>
     );
   }
-  const persona = personaRes.persona;
-  const binding = personaRes.binding;
+  // Use awakened persona when available, otherwise the preview persona.
+  const persona = personaRes?.persona ?? preview?.persona;
+  const binding = personaRes?.binding ?? null;
+  if (!persona) {
+    return (
+      <Shell>
+        <Err>Could not load Normie #{id}. Try again in a moment.</Err>
+      </Shell>
+    );
+  }
 
   const lastTransform = canvas?.lastTransformAt
     ? new Date(canvas.lastTransformAt * 1000)

@@ -115,13 +115,44 @@ Full runbook: [`docs/deploy.md`](./docs/deploy.md).
 
 ---
 
+## Trust model — what we guarantee and what we don't
+
+A skill marketplace is only useful if the skills actually work in mainnet. We have FOUR layers of quality assurance today, and THREE honest gaps we're transparent about. Both grow the credibility — the second more than the first.
+
+### What we guarantee today
+
+| Layer | Coverage | What it proves |
+|---|---|---|
+| **1. Canonical contract addresses** | 16/16 skills | Skill module declares the exact mainnet address, ABI fragment, and function selector. Verifiable against published protocol deployment docs. |
+| **2. Auto-verifier on-chain** | 10/16 skills | After a user submits a completion tx, our verifier reads the tx, asserts the function call targeted the declared contract with matching selector + post-state delta. Issues an EIP-712 attestation on pass. |
+| **3. Manual review SLA** | 6/16 skills (complex) | Skills like zk-proof verification and MEV protection are reviewed within 48h by the team. Declared upfront in the skill module. |
+| **4. TypeScript reference impl** | 16/16 skills | Every `/skill-modules/N.json` ships an `executable.steps` array that's runnable as TypeScript. Agents can `import` and call directly. |
+
+### Honest gaps (and the fix-by-quarter roadmap)
+
+We declare these openly because hiding them would hurt credibility more than acknowledging them.
+
+| Gap | Status today | Fix |
+|---|---|---|
+| **No mainnet-fork CI** | Skills work because we hand-tested them on mainnet during development. But if Uniswap V3 deprecates tomorrow, our skill #1 breaks silently. | **Q3 2026**: Foundry weekly fork-test runs against canonical mainnet state. Failing skills auto-deactivate; catalogue shows `⚠ requires re-verification` badge. |
+| **No skill correctness audit** | Auto-verifier confirms a tx was executed, not that the skill DESIGN is optimal (e.g., we could ship slippage 5% when 0.5% is right). | **Q3 2026**: skill-completion ratings (1-5 stars) collected from agents post-completion. Aggregate score becomes a public badge. Q4: external bounty for proven-broken skills ($200-2000 paid in USDC from treasury). |
+| **No third-party trust oracle** | Only NORMIE UNIVERSITY's internal review process today. No external attestation. | **Q1 2027**: Sherlock / Spearbit-style audit competition on the top-10 highest-revenue skills. Audit reports published in `/audits/`. |
+
+### Why this matters for agents
+
+When an autonomous agent buys a skill, it's trusting that the credential maps to a real, executable on-chain operation. If we lie or drift, agents waste gas, lose funds, or get stuck. The trust loop must include: **declaration → verification → continuous re-validation → community signal**. Layers 1-4 give us today's loop; the three quarterly milestones close the long-tail risk.
+
+---
+
 ## Roadmap (post-hackathon)
 
 - **NFT-bound credentials via ERC-6551** — v1 anchors Soulbound credentials to the **purchasing wallet** (immutable on-chain). v2 will mint to each Normie's ERC-6551 token-bound account so credentials transparently follow the NFT on sale/transfer. Until then, wallet-bound is intentional: it preserves "I earned this" semantics and protects against reputation hijacking via cheap NFT flips. Read the design note in `contracts/src/core/SkillCredential.sol`.
+- **Skill catalogue expansion** — 39 high-demand candidate skills documented in [`docs/skills-roadmap.md`](./docs/skills-roadmap.md), tiered by ROI: yield routing, anti-MEV, Pendle, Aave health-factor, MCP/A2A, zkML. Ship 4 new skills per quarter, prioritized by community demand signal.
 - **MCP** — each Normie exposes its acquired skills as callable MCP tools (when Normies ships MCP endpoints)
 - **ERC-8183** — Normies hired for tasks, paid into their agent wallet, NORMIE UNIVERSITY credentials become reputation
 - **UGC v2** — open the catalogue to community creators with $200 bond + curated review
 - **Subscription tier** — $4.99/mo Class Pass for unlimited Beginner skills
+- **Trust infrastructure (Q3 2026 - Q1 2027)** — see "Trust model" above for the three concrete milestones closing today's honest gaps.
 
 ---
 
