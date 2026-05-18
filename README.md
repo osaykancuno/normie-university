@@ -27,7 +27,7 @@
 | **Persona-tailored curriculum** | `/agents/info/{id}` → traits → recommendation engine | "Pixel-born philosopher (Human/Peaceful/Nerd-Glasses) → ZK Proof Verification" — recommendations actually derived from the persona. |
 | **Welcome-gift gating** | `/holders/{address}` ownership check | Sponsored first skill, free, gated to Normie holders only. |
 
-**11 Normies API endpoints consumed**, **6 of them feed user-facing features**.
+**15 Normies API endpoints consumed**, **6 of them feed user-facing features**.
 
 ---
 
@@ -111,7 +111,7 @@ Full runbook: [`docs/deploy.md`](./docs/deploy.md).
 - **Frontend**: Next.js 16 + wagmi 3 + viem 2 + RainbowKit 2 + Tailwind v4
 - **Contracts**: Solidity 0.8.24 + Foundry · viaIR · 189 unit + 5 invariant tests · OpenZeppelin v5
 - **Chain**: Ethereum L1 (Sepolia testnet, Mainnet production)
-- **APIs consumed**: 11 endpoints from api.normies.art
+- **APIs consumed**: 15 endpoints from api.normies.art (full list in [`SUBMISSION.md`](./SUBMISSION.md))
 
 ---
 
@@ -159,7 +159,9 @@ When an autonomous agent buys a skill, it's trusting that the credential maps to
 ## Submission
 
 - **Hackathon**: [hackathon.normies.art](https://hackathon.normies.art/)
-- **License**: MIT
+- **Category**: AI / Agent
+- **License**: MIT — see [`LICENSE`](./LICENSE)
+- **Form-ready answers**: [`SUBMISSION.md`](./SUBMISSION.md)
 - **Built by**: solo + AI co-pilot (see commit history)
 
 Special thanks to [@nxt3d](https://x.com/nxt3d) for ERC-8217 + Adapter8004 making this whole flow possible, and to the Normies team for shipping an API that's actually agent-friendly.
