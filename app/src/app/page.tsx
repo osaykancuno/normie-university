@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { PlatformStats } from "@/components/home/PlatformStats";
-import { FeaturedPaths } from "@/components/home/FeaturedPaths";
+// import { FeaturedPaths } from "@/components/home/FeaturedPaths"; // hidden on testnet
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getCollectionStats } from "@/lib/server/normies";
@@ -65,9 +65,8 @@ export default async function HomePage() {
 
       <div className="rule mx-auto max-w-7xl" />
 
-      <FeaturedPaths />
-
-      <div className="rule mx-auto max-w-7xl" />
+      {/* FeaturedPaths intentionally hidden on testnet build — bundled
+          purchase flow ships with mainnet release. Re-enable here when ready. */}
 
       {/* Three pillars — re-framed as classroom mechanics */}
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">

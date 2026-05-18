@@ -175,22 +175,21 @@ export function OnboardingWizard() {
                     You&apos;re in.
                   </h2>
                   <p className="text-sm leading-relaxed text-ink-soft">
-                    Explore <strong className="text-ink">15 curated skill modules</strong>{" "}
-                    and <strong className="text-ink">6 learning paths</strong> across
-                    DeFi, NFT, Trading, Governance, Cross-Chain, Security. Each
-                    purchase mints a Soulbound credential to your wallet on
-                    completion.
+                    Explore <strong className="text-ink">32 curated skill modules</strong>{" "}
+                    across DeFi, NFT, Trading, Governance, Cross-Chain, Security
+                    and agent-native primitives. Each purchase mints a Soulbound
+                    credential to your wallet on completion.
                   </p>
                   <div className="rounded-md border border-line-strong bg-canvas p-3 text-xs text-ink-soft">
                     💡 Hold a <Link href="https://normies.art" target="_blank" rel="noreferrer noopener" className="text-ink underline hover:underline">Normie</Link>?
-                    Reconnect with that wallet for a free welcome gift and a path bundle tailored to your traits.
+                    Reconnect with that wallet for a persona-tailored curriculum.
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Link href="/skills" onClick={dismiss}>
                       <Button>Browse catalogue →</Button>
                     </Link>
-                    <Link href="/paths" onClick={dismiss}>
-                      <Button variant="outline">See learning paths</Button>
+                    <Link href="/use-cases" onClick={dismiss}>
+                      <Button variant="outline">See use cases</Button>
                     </Link>
                   </div>
                 </>

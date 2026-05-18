@@ -28,17 +28,8 @@ export function Footer() {
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mono">
           <Link href="/skills" className="hover:text-ink">Catalogue</Link>
           <Link href="/use-cases" className="hover:text-ink">Use cases</Link>
-          <Link href="/paths" className="hover:text-ink">Paths</Link>
           <Link href="/developers" className="hover:text-ink">Developers</Link>
           <Link href="/community/normies" className="hover:text-ink">Normies</Link>
-          <a
-            href="https://github.com/osaykancuno/normie-university"
-            target="_blank"
-            rel="noreferrer noopener"
-            className="hover:text-ink"
-          >
-            github ↗
-          </a>
           <a
             href="https://normies.art"
             target="_blank"

@@ -21,8 +21,9 @@ const NAV_LINKS_PRIMARY = [
 ];
 
 /// Tier 2 — only on larger desktops (lg+); on mobile they're in the menu.
+/// Learning Paths intentionally hidden while we're on testnet — re-enable
+/// once the bundled-purchase flow ships with real USDC on mainnet.
 const NAV_LINKS_SECONDARY = [
-  { href: "/paths",             label: "Paths" },
   { href: "/reputation",        label: "Leaderboard" },
   { href: "/community/normies", label: "Normies" },
   { href: "/developers",        label: "Developers" },
