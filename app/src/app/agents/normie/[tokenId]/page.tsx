@@ -28,7 +28,11 @@ export default function NormieAgentProfilePage({
   const { data: burns }      = useBurnHistory(validId ? id : undefined);
   const { data: normieMeta } = useNormie(validId ? id : undefined);
   const ownerAddr = normieMeta?.owner;
-  // NORMIE UNIVERSITY credentials currently keyed by wallet — best effort lookup via owner
+  // v1 design: SkillCredential is mapping(wallet => skills). We show the skills
+  // owned by the *current* holder wallet of this Normie. If the NFT is sold,
+  // the buyer's wallet doesn't inherit the seller's credentials — they remain
+  // soulbound to the original purchaser. v2 will use ERC-6551 token-bound
+  // accounts so credentials follow the NFT (see Roadmap in README).
   const { data: skillIds } = useAgentSkills(ownerAddr);
 
   const credentials = useMemo(() => {
@@ -159,12 +163,12 @@ export default function NormieAgentProfilePage({
           </div>
 
           {/* Canvas live state */}
-          {persona.canvas?.customized && (
+          {persona.canvas?.customized && persona.canvas?.diff && (
             <div className="border border-line bg-surface p-6">
               <div className="mb-2 flex flex-wrap items-center gap-2">
                 <Badge>Canvas</Badge>
                 <Badge variant="outline">
-                  {persona.canvas.transformations} transformations
+                  {(persona.canvas.diff.addedCount ?? 0) + (persona.canvas.diff.removedCount ?? 0)} pixel edits
                 </Badge>
                 {lastTransform && (
                   <span className="mono text-[10px] text-ink-muted">
@@ -173,9 +177,9 @@ export default function NormieAgentProfilePage({
                 )}
               </div>
               <div className="grid grid-cols-3 gap-3 text-sm text-ink">
-                <Stat label="pixels +" value={persona.canvas.pixelDiff.added} />
-                <Stat label="pixels −" value={persona.canvas.pixelDiff.removed} />
-                <Stat label="net" value={persona.canvas.pixelDiff.net} />
+                <Stat label="pixels +" value={persona.canvas.diff.addedCount ?? 0} />
+                <Stat label="pixels −" value={persona.canvas.diff.removedCount ?? 0} />
+                <Stat label="net" value={persona.canvas.diff.netChange ?? 0} />
               </div>
             </div>
           )}

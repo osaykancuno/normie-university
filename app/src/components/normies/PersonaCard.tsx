@@ -26,9 +26,10 @@ export function PersonaCard({ address }: { address: `0x${string}` | undefined })
   if (!data?.persona) return null;
 
   const p = data.persona;
-  const diffSign = p.canvas.pixelDiff.net > 0
-    ? `+${p.canvas.pixelDiff.net}`
-    : `${p.canvas.pixelDiff.net}`;
+  const netChange = p.canvas?.diff?.netChange ?? 0;
+  const diffSign = netChange > 0 ? `+${netChange}` : `${netChange}`;
+  const editCount =
+    (p.canvas?.diff?.addedCount ?? 0) + (p.canvas?.diff?.removedCount ?? 0);
 
   return (
     <Card className="border-line-strong bg-canvas">
@@ -58,7 +59,7 @@ export function PersonaCard({ address }: { address: `0x${string}` | undefined })
         <div className="grid grid-cols-2 gap-3 rounded-lg border border-line/60 bg-surface/40 p-3 text-xs sm:grid-cols-4">
           <Stat label="Level" value={String(p.canvas.level)} />
           <Stat label="Action Points" value={p.canvas.actionPoints.toLocaleString()} />
-          <Stat label="Transforms" value={String(p.canvas.transformations)} />
+          <Stat label="Pixel edits" value={String(editCount)} />
           <Stat label="Pixel net" value={diffSign} />
         </div>
 

@@ -177,8 +177,13 @@ export type PersonaInfo = {
     level: number;
     actionPoints: number;
     customized: boolean;
-    transformations: number;
-    pixelDiff: { added: number; removed: number; net: number };
+    diff?: {
+      added?: Array<{ x: number; y: number }>;
+      removed?: Array<{ x: number; y: number }>;
+      addedCount?: number;
+      removedCount?: number;
+      netChange?: number;
+    };
   };
 };
 

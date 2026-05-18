@@ -117,6 +117,7 @@ Full runbook: [`docs/deploy.md`](./docs/deploy.md).
 
 ## Roadmap (post-hackathon)
 
+- **NFT-bound credentials via ERC-6551** — v1 anchors Soulbound credentials to the **purchasing wallet** (immutable on-chain). v2 will mint to each Normie's ERC-6551 token-bound account so credentials transparently follow the NFT on sale/transfer. Until then, wallet-bound is intentional: it preserves "I earned this" semantics and protects against reputation hijacking via cheap NFT flips. Read the design note in `contracts/src/core/SkillCredential.sol`.
 - **MCP** — each Normie exposes its acquired skills as callable MCP tools (when Normies ships MCP endpoints)
 - **ERC-8183** — Normies hired for tasks, paid into their agent wallet, NORMIE UNIVERSITY credentials become reputation
 - **UGC v2** — open the catalogue to community creators with $200 bond + curated review

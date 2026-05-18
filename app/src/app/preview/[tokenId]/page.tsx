@@ -122,11 +122,11 @@ export default function PreviewPage({
                 <Stat label="Transforms" value={transformations} />
                 <Stat
                   label="Pixels +"
-                  value={persona.canvas?.pixelDiff?.added ?? 0}
+                  value={persona.canvas?.diff?.addedCount ?? 0}
                 />
                 <Stat
                   label="Pixels −"
-                  value={persona.canvas?.pixelDiff?.removed ?? 0}
+                  value={persona.canvas?.diff?.removedCount ?? 0}
                 />
               </div>
               {lastTransform && (
