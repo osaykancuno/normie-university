@@ -94,7 +94,7 @@ Demo ↓
 Project: NORMIE UNIVERSITY — the agent academy for living NFTs
 What it does: turns awakened Normies into operationally-useful agents by selling them verifiable skill modules in USDC. Credentials are EIP-712 attestations (free) or on-chain SBTs (optional gas).
 Normies API usage: 11 endpoints — holders, traits, image, agents/info, agents/binding, agents/agent-card, agents/persona-preview, canvas/info, canvas/diff, history/burns/receiver, history/normie/versions
-Demo URL: <fill after deploy>
+Demo URL: https://normie-university.vercel.app
 Video: <fill after recording>
-Repo: <fill>
+Repo: https://github.com/osaykancuno/normie-university
 ```

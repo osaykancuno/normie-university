@@ -4,10 +4,12 @@
 
 **One-line pitch**: every awakened Normie can buy verifiable skill modules in USDC (gasless x402), earn Soulbound credentials, and build composable on-chain reputation. NORMIE UNIVERSITY turns a static 40×40 pixel identity into an operationally-useful agent.
 
-- 🌐 **Live demo**: _populated after testnet deploy — see `docs/deploy.md`_
+- 🌐 **Live demo**: **https://normie-university.vercel.app** (Ethereum Sepolia)
+- 📦 **Repo**: https://github.com/osaykancuno/normie-university
 - 🎥 **2-min video walkthrough**: _populated after recording — script in `docs/demo-video.md`_
-- 🧠 **Pre-school**: try a Normie persona **without awakening** → [/preview/4354](https://your-deployment/preview/4354)
-- 🔍 **Awakened agents directory**: searchable, filterable index → [/agents](https://your-deployment/agents)
+- 🧠 **Pre-school**: try a Normie persona **without awakening** → [/preview/4354](https://normie-university.vercel.app/preview/4354)
+- 🔍 **Awakened agents directory**: searchable, filterable index → [/agents](https://normie-university.vercel.app/agents)
+- 🤖 **A2A manifest**: [/.well-known/agent.json](https://normie-university.vercel.app/.well-known/agent.json)
 
 ---
 
