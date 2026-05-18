@@ -336,7 +336,8 @@ export type CollectionStats = {
 };
 
 export async function getCollectionStats(): Promise<CollectionStats> {
-  return cachedFetch("collection-stats", 60_000, async () => {
+  // 30s cache — this is the most live-feeling metric on the site
+  return cachedFetch("collection-stats", 30_000, async () => {
     const [statsRes, countRes] = await Promise.all([
       fetch(`${NORMIES_API}/history/stats`, { headers: { accept: "application/json" } }),
       fetch(`${NORMIES_API}/agents/count`, { headers: { accept: "application/json" } }),

@@ -314,16 +314,39 @@ export type CollectionStats = {
   totalActionPointsDistributed: string;
 };
 
-export function useCollectionStats() {
+/// Polls collection-wide stats. Defaults to 30s — the awakened count is the
+/// most important live metric on the site (we're the agent academy, after all).
+/// When the tab is hidden, polling pauses to save bandwidth.
+export function useCollectionStats(pollMs: number = 30_000) {
   const [data, setData] = useState<CollectionStats | null>(null);
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/normies/collection-stats")
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled && !d?.error) setData(d); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, []);
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const tick = async () => {
+      try {
+        const r = await fetch("/api/normies/collection-stats", { cache: "no-store" });
+        const d = await r.json();
+        if (!cancelled && !d?.error) setData(d);
+      } catch { /* network blip — keep last data */ }
+      if (!cancelled) timer = setTimeout(tick, pollMs);
+    };
+    tick();
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible" && !cancelled) {
+        if (timer) clearTimeout(timer);
+        tick();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [pollMs]);
   return data;
 }
 

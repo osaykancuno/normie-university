@@ -8,6 +8,7 @@ import { useAccount } from "wagmi";
 import { useIsCreator } from "@/hooks/useSkillRegistry";
 import { useDemoMode } from "@/hooks/useSkills";
 import { ACTIVE_CHAIN } from "@/config/chains";
+import { AwakenedTicker } from "@/components/layout/AwakenedTicker";
 import { cn } from "@/lib/utils";
 
 const IS_TESTNET = (ACTIVE_CHAIN.id as number) !== 1 && (ACTIVE_CHAIN.id as number) !== 8453;
@@ -94,6 +95,14 @@ export function Header() {
         <div className="flex-1 md:hidden" />
 
         {/* Admin (creator-only) — compact button */}
+        {/* Live awakened-count ticker — our hero metric */}
+        <div className="hidden lg:inline-flex shrink-0">
+          <AwakenedTicker />
+        </div>
+        <div className="hidden md:inline-flex lg:hidden shrink-0">
+          <AwakenedTicker compact />
+        </div>
+
         {isCreator && (
           <Link
             href="/admin/skills/create"

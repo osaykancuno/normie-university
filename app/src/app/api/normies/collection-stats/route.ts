@@ -3,14 +3,15 @@
 ///         deduct from 10000), awakened count, transforms. Cached 60s.
 import { getCollectionStats } from "@/lib/server/normies";
 
-export const revalidate = 60;
+export const revalidate = 30;
 
 export async function GET() {
   try {
     const stats = await getCollectionStats();
     return Response.json(stats, {
       headers: {
-        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+        // Live metric — short CDN cache so the awakened count feels real-time
+        "Cache-Control": "public, s-maxage=30, stale-while-revalidate=120",
       },
     });
   } catch (e) {

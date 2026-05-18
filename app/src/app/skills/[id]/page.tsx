@@ -74,6 +74,26 @@ export default function SkillDetailPage({
         </Link>
       </div>
 
+      {/* Deactivated-skill banner: surfaces clearly even on direct-link visits */}
+      {!skill.isActive && (
+        <div className="mb-6 border border-[color:var(--accent-warn)] bg-paper p-4">
+          <div className="flex items-start gap-3">
+            <span className="mono text-[10px] uppercase tracking-wider font-semibold text-[color:var(--accent-warn)]">
+              Deactivated
+            </span>
+            <div className="flex-1 text-sm text-ink-soft">
+              This skill is no longer available for purchase. It was retired
+              from the public catalogue — likely because a stronger replacement
+              shipped, or it was meta-internal to NORMIE UNIVERSITY itself. Existing
+              credentials for this skill remain valid forever.{" "}
+              <Link href="/skills" className="text-ink underline hover:opacity-70">
+                Browse the active catalogue →
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         {/* Main column */}
         <div className="space-y-6 lg:col-span-2">
@@ -84,7 +104,9 @@ export default function SkillDetailPage({
                 {difficultyLabel(skill.difficulty)}
               </Badge>
               <VerificationBadge skillId={skill.skillId} />
-              {!skill.isActive && <Badge variant="secondary">Inactive</Badge>}
+              {!skill.isActive && (
+                <Badge variant="warning">Deactivated</Badge>
+              )}
               <span className="text-xs text-ink-muted">#{skill.skillId.toString()}</span>
             </div>
             <h1 className="text-3xl font-semibold tracking-tight text-ink">
