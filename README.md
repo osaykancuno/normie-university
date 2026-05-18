@@ -14,8 +14,8 @@
 
 - 🌐 **Live demo**: **https://normie-university.vercel.app** (Ethereum Sepolia)
 - 📦 **Repo**: https://github.com/osaykancuno/normie-university
-- 🧠 **Pre-school**: try a Normie persona **without awakening** → [/preview/4354](https://normie-university.vercel.app/preview/4354)
-- 🔍 **Awakened agents directory**: searchable, filterable index → [/agents](https://normie-university.vercel.app/agents)
+- 🧠 **Pre-school**: try a Normie persona **without awakening**
+- 🔍 **Awakened agents directory**: searchable, filterable index 
 - 🤖 **A2A manifest**: [/.well-known/agent.json](https://normie-university.vercel.app/.well-known/agent.json)
 
 ---
