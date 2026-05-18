@@ -13,7 +13,7 @@
       {
         "role": "verifier",
         "name": "Target Groth16 Verifier",
-        "address": "0x*",
+        "address": "0x0000000000000000000000000000000000000000", "note": "User-provided at runtime — see steps for binding",
         "comment": "Per-circuit verifier — agent supplies the deployed verifier address per task. Common verifiers: Tornado (deprecated), Semaphore, RailGun, MACI.",
         "abi_fragments": [
           { "type": "function", "name": "verifyProof",

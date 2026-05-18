@@ -10,11 +10,13 @@ const PERSONAS = [
     icon: "💤",
     name: "The Sleeping Treasury",
     quote: "I want my idle stablecoins to earn without watching the chain 24/7.",
-    pain: "$50k USDC sitting in a wallet earns 0%. Manually moving across Aave/Compound/Morpho weekly is annoying and missing one switch costs $300+/yr.",
+    pain: "$50k USDC sitting in a wallet earns 0%. Manually moving across Aave, Compound, Morpho, Spark and chasing the best APY weekly is annoying — missing one switch costs $300+/yr.",
     skillsNeeded: [
-      { id: 18, name: "Multi-Protocol Yield Router", price: "$9.99" },
-      { id: 2,  name: "Aave V3 Supply & Withdraw",   price: "$0.49" },
-      { id: 24, name: "Lido stETH Staking",          price: "$0.49" },
+      { id: 18, name: "Multi-Protocol Yield Router",    price: "$9.99" },
+      { id: 2,  name: "Aave V3 Supply & Withdraw",      price: "$0.49" },
+      { id: 37, name: "Compound V3 Supply",             price: "$0.49" },
+      { id: 39, name: "Maker sDAI (DSR)",               price: "$0.49" },
+      { id: 24, name: "Lido stETH Staking",             price: "$0.49" },
     ],
     annualROI: "+$700-2,100 on $50k principal",
   },
@@ -23,11 +25,12 @@ const PERSONAS = [
     icon: "📈",
     name: "The On-Chain Trader",
     quote: "I trade size weekly. Sandwich attacks and bad fills cost me 2-3% per swap.",
-    pain: "Public-mempool swaps lose 2-5% to sandwich bots. Manually routing through 1inch/CoW/UniswapX takes 4 clicks per trade.",
+    pain: "Public-mempool swaps lose 2-5% to sandwich bots. Manually routing through 1inch/CoW/UniswapX takes 4 clicks per trade. Direct perp trading on GMX/Hyperliquid is fragmented.",
     skillsNeeded: [
       { id: 19, name: "Anti-MEV via Flashbots",        price: "$2.99" },
       { id: 21, name: "UniswapX Best Execution",       price: "$2.99" },
       { id: 1,  name: "Uniswap V3 Swap",               price: "$2.99" },
+      { id: 40, name: "GMX V2 Perp Trading",           price: "$9.99" },
       { id: 12, name: "Arbitrage Detection",           price: "$24.99" },
     ],
     annualROI: "+$3,000-8,000 saved on $500k turnover",
@@ -48,12 +51,13 @@ const PERSONAS = [
     id: "yield-maxi",
     icon: "🌾",
     name: "The Yield Maximalist",
-    quote: "I want every basis point. Pendle, EigenLayer, Convex — but it's too much to track.",
-    pain: "Pendle PT discounts disappear if you blink. EigenLayer operators get slashed. Convex bribes need to be claimed every 2 weeks or they expire.",
+    quote: "I want every basis point. Pendle, EigenLayer, Convex, Curve, GMX — but it's too much to track.",
+    pain: "Pendle PT discounts disappear if you blink. EigenLayer operators get slashed. Convex bribes need to be claimed every 2 weeks or they expire. Curve gauge boosts decay.",
     skillsNeeded: [
       { id: 20, name: "Pendle PT/YT",                price: "$9.99" },
       { id: 23, name: "EigenLayer Restaking",        price: "$9.99" },
       { id: 28, name: "Convex Bribe Harvester",      price: "$2.99" },
+      { id: 38, name: "Curve Stable Pool LP",        price: "$2.99" },
       { id: 22, name: "Hyperliquid Funding Arb",     price: "$24.99" },
     ],
     annualROI: "+15-40% APR over base staking on the same principal",
@@ -79,7 +83,6 @@ const PERSONAS = [
     pain: "Native bridges take 7 days. CCTP is slow. Stargate is expensive on small sizes. Choosing per-trade is a research task each time.",
     skillsNeeded: [
       { id: 26, name: "Across Bridge",         price: "$2.99" },
-      { id: 8,  name: "Cross-Chain Purchase",  price: "$24.99" },
     ],
     annualROI: "Saves 1-3h/week, plus fee delta of $50-300 per bridge",
   },
@@ -91,7 +94,6 @@ const PERSONAS = [
     pain: "Snapshot, Tally, and Agora are 3 different interfaces. Voting power decays if you don't show up. Token vesting cliffs sneak up.",
     skillsNeeded: [
       { id: 29, name: "Multi-DAO Snapshot Voting",    price: "$0.49" },
-      { id: 13, name: "Snapshot Voting",              price: "$2.99" },
       { id: 30, name: "Token Vesting Auto-Claim",     price: "$2.99" },
     ],
     annualROI: "Reclaims ~$2k/yr in missed vesting + retains governance influence",
@@ -115,13 +117,12 @@ const PERSONAS = [
     icon: "🤖",
     name: "The Builder Building Agents",
     quote: "I'm building autonomous agents. I need composable, audited capability modules.",
-    pain: "Writing each integration from scratch (x402, ERC-8004 registration, MCP wiring, IPFS pinning) wastes 2-3 weeks per agent project.",
+    pain: "Writing each integration from scratch (ERC-7702 delegation, EAS attestation issuance, zk-proof verification, Safe multi-sig flows) wastes 2-3 weeks per agent project. Plus each one has its own quirks across versions.",
     skillsNeeded: [
-      { id: 4,  name: "x402 Payment",                price: "$2.99" },
-      { id: 5,  name: "ERC-8004 Registration",       price: "$0.49" },
-      { id: 33, name: "ERC-7702 Delegation",         price: "$24.99" },
-      { id: 34, name: "MCP Server Registration",     price: "$9.99" },
+      { id: 33, name: "ERC-7702 EOA Delegation",     price: "$24.99" },
+      { id: 35, name: "EAS Attestation Issuance",    price: "$2.99" },
       { id: 14, name: "zk-Proof Verification",       price: "$24.99" },
+      { id: 6,  name: "Safe Multisig Tx",            price: "$9.99" },
     ],
     annualROI: "Each skill = ~10h of dev work saved at $100-200/h = $1k-2k per skill",
   },
@@ -149,7 +150,7 @@ const FAQ = [
   },
   {
     q: "How do I know a skill actually works?",
-    a: "Three layers: (1) the module declares canonical contract addresses verifiable on Etherscan, (2) 10/16 launch skills have on-chain auto-verifiers that check tx selector + state delta, (3) every skill ships a TypeScript reference implementation you can run before purchase. Plus: 39 future skills documented with the same QA standard. The honest gaps (no mainnet-fork CI, no third-party audit yet) are declared openly in the README.",
+    a: "Three layers: (1) the module declares canonical contract addresses verifiable on Etherscan — 43/43 verified at this catalogue's last audit, (2) most skills have on-chain auto-verifiers that check tx selector + state delta, (3) every skill ships a TypeScript reference implementation you can run before purchase. Plus: 23 future skills documented with the same QA standard. The honest gaps (no mainnet-fork CI, no third-party audit yet) are declared openly in the README.",
   },
   {
     q: "What happens to my skill credentials if I sell my Normie?",
@@ -260,8 +261,8 @@ export default function UseCasesPage() {
           Find the skill that solves your problem.
         </h2>
         <p className="mt-2 text-sm text-ink-soft">
-          36 live skills on Sepolia, IPFS-pinned, with TypeScript reference
-          implementations. 39 more documented in the roadmap.
+          32 live skills on Sepolia, IPFS-pinned, with TypeScript reference
+          implementations. 23 more documented in the roadmap.
         </p>
         <div className="mt-5 flex flex-wrap justify-center gap-3">
           <Link

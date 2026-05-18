@@ -5,15 +5,22 @@
   "description": "Detect newly vested tokens from major issuers (OP, ARB, ENA, ENS, IMX, BLUR, etc.) and claim them on the agent's behalf. Optionally auto-route claimed tokens into stablecoins or LSTs per agent policy.",
   "category": "DeFi",
   "difficulty": "intermediate",
-  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "chain": { "id": 1, "name": "Multi-chain (Ethereum primary)" },
+  "supported_chains": [
+    { "id": 1,     "name": "Ethereum Mainnet — Sablier V2, LlamaPay, ENS lock" },
+    { "id": 10,    "name": "Optimism — OP Airdrop (still active)" },
+    { "id": 42161, "name": "Arbitrum One — Sablier V2, custom vesting" }
+  ],
   "prerequisites": [],
-  "use_case": "Agent has ARB and OP airdrop vesting cliffs. Forgets to claim → token continues to lock. This skill checks each block-cliff and auto-claims. Across 5 vestings = ~$2k/month wouldn't have been claimed.",
+  "use_case": "Agent has streams on Sablier V2, an OP airdrop cliff, and ENS-locked tokens. Forgets to claim → tokens continue to lock. This skill checks each block-cliff and auto-claims. Across 5 vestings = ~$2k/month wouldn't have been claimed.",
   "executable": {
     "kind": "smart_contract_interaction",
     "contracts": [
-      { "role": "arb_claim", "name": "Arbitrum Token Distributor", "address": "0x67a24CE4321aB3aF51c2D0a4801c3E111D88C9d9" },
-      { "role": "op_claim",  "name": "Optimism Airdrop",           "address": "0xfedFAF1A10335448b7FA0268F56D2B44DBD357de" },
-      { "role": "ens_claim", "name": "ENS Token Lock",             "address": "0xC18360217D8F7Ab5e7c516566761Ea12Ce7F9D72" }
+      { "role": "sablier_v2_linear", "chain_id": 1, "name": "Sablier V2 LockupLinear", "address": "0xAFb979d9afAd1aD27C5eFf4E27226E3AB9e5dCC9",
+        "note": "Canonical vesting protocol on EVM. Streams[X].withdraw(streamId, amount) claims accrued tokens." },
+      { "role": "llamapay",          "chain_id": 1, "name": "LlamaPay Streams",         "address": "0xde1C04855c2828431ba637675B6929A684f84C7F" },
+      { "role": "op_claim",          "chain_id": 10,"name": "Optimism Airdrop Module",  "address": "0xfedFAF1A10335448b7FA0268F56D2B44DBD357de" },
+      { "role": "ens_claim",         "chain_id": 1, "name": "ENS Token Lock",           "address": "0xC18360217D8F7Ab5e7c516566761Ea12Ce7F9D72" }
     ],
     "steps": [
       { "id": "check_each",   "action": "view_each", "function": "claimableAmount", "args": ["$AGENT"] },

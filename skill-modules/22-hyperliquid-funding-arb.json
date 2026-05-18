@@ -5,7 +5,8 @@
   "description": "Open a short perp position on Hyperliquid against an equivalent long spot position elsewhere — capture the funding rate as risk-free yield. When funding is positive (longs pay shorts), this generates 15-50% APR with zero directional exposure.",
   "category": "Trading",
   "difficulty": "expert",
-  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "chain": { "id": 42161, "name": "Arbitrum One" },
+  "secondary_chain": { "id": 1, "name": "Ethereum Mainnet — for spot hedge leg" },
   "prerequisites": [1, 27],
   "use_case": "ETH perp funding rate hits +0.08% per 8h on Hyperliquid = 87% APR. Agent longs 10 ETH spot on mainnet, shorts 10 ETH perp on Hyperliquid. Net exposure = 0. Net yield = funding payments.",
   "executable": {

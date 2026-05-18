@@ -12,7 +12,7 @@
     "contracts": [
       {
         "role": "nft_collection",
-        "address": "0x*",
+        "address": "0x0000000000000000000000000000000000000000", "note": "User-provided at runtime — see steps for binding",
         "abi_fragments": [
           { "type": "function", "name": "supportsInterface",
             "inputs": [{ "name": "interfaceId", "type": "bytes4" }],

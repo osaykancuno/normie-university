@@ -11,7 +11,10 @@
   "executable": {
     "kind": "eip7702_authorization",
     "contracts": [
-      { "role": "delegation_implementation", "name": "BiconomyV3 Nexus", "address": "0x000000333939a5C5dCa66e6da00Bf5f8E0d8eE3D" }
+      { "role": "delegation_implementation_safe", "name": "Safe Smart Account v1.5", "address": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+        "note": "Recommended ERC-7702 implementation. The agent signs a type-4 authorization tuple pointing to this address; the EOA's code then delegates to this Safe implementation." },
+      { "role": "delegation_implementation_zerodev", "name": "ZeroDev Kernel v3.2", "address": "0x0000000000bbF5c5Fd284e657F01Bd000933C96D",
+        "note": "Alternative implementation — modular plugins, session keys, gas abstraction." }
     ],
     "steps": [
       { "id": "build_auth",  "action": "build_authorization",

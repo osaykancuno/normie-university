@@ -25,7 +25,7 @@
       {
         "role": "public_resolver",
         "name": "PublicResolver (looked up from registry)",
-        "address": "0x*",
+        "address": "0x0000000000000000000000000000000000000000", "note": "User-provided at runtime — see steps for binding",
         "abi_fragments": [
           { "type": "function", "name": "addr",
             "inputs": [{ "name": "node", "type": "bytes32" }],
