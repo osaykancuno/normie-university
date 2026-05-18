@@ -1,0 +1,64 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "ZK Proof Verification (Groth16)",
+  "version": "2.0.0",
+  "description": "Verify a Groth16 zero-knowledge proof on Ethereum mainnet using a precompiled verifier contract. Foundation skill for privacy-preserving agent attestations, zk-rollup interactions, and Semaphore-style identity proofs.",
+  "category": "Security",
+  "difficulty": "expert",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [],
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      {
+        "role": "verifier",
+        "name": "Target Groth16 Verifier",
+        "address": "0x*",
+        "comment": "Per-circuit verifier — agent supplies the deployed verifier address per task. Common verifiers: Tornado (deprecated), Semaphore, RailGun, MACI.",
+        "abi_fragments": [
+          { "type": "function", "name": "verifyProof",
+            "inputs": [
+              { "name": "a",            "type": "uint256[2]"  },
+              { "name": "b",            "type": "uint256[2][2]"},
+              { "name": "c",            "type": "uint256[2]"  },
+              { "name": "publicInputs", "type": "uint256[]"   }
+            ],
+            "outputs": [{ "name": "valid", "type": "bool" }],
+            "stateMutability": "view"
+          }
+        ]
+      }
+    ],
+    "steps": [
+      { "id": "generate_witness",  "action": "offchain_compute",
+        "description": "Run the circuit (snarkjs / circom / Halo2) with private inputs + public signals to produce a witness." },
+      { "id": "prove",             "action": "offchain_compute",
+        "description": "Generate Groth16 proof from witness + proving key. Output: (a, b, c, publicSignals)." },
+      { "id": "call_verify",       "action": "call",
+        "target": "$VERIFIER", "function": "verifyProof",
+        "params": { "a": "$PROOF_A", "b": "$PROOF_B", "c": "$PROOF_C", "publicInputs": "$PUBLIC_SIGNALS" } },
+      { "id": "consume_outputs",   "action": "policy",
+        "description": "Use publicSignals downstream only AFTER verifyProof returns true." }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem", "snarkjs"],
+    "snippet": "// Off-chain: generate proof\nimport { groth16 } from 'snarkjs';\nconst { proof, publicSignals } = await groth16.fullProve(\n  inputs, 'circuit.wasm', 'circuit_final.zkey'\n);\n\n// Format for the Solidity verifier\nconst a: [bigint, bigint] = [BigInt(proof.pi_a[0]), BigInt(proof.pi_a[1])];\nconst b: [[bigint,bigint],[bigint,bigint]] = [\n  [BigInt(proof.pi_b[0][1]), BigInt(proof.pi_b[0][0])],\n  [BigInt(proof.pi_b[1][1]), BigInt(proof.pi_b[1][0])]\n];\nconst c: [bigint, bigint] = [BigInt(proof.pi_c[0]), BigInt(proof.pi_c[1])];\nconst inputs = publicSignals.map(BigInt);\n\n// On-chain: verify\nconst valid = await client.readContract({\n  address: VERIFIER, abi: VERIFIER_ABI, functionName: 'verifyProof',\n  args: [a, b, c, inputs]\n});\nif (!valid) throw new Error('Invalid proof');"
+  },
+  "verification": {
+    "auto_verifiable": false,
+    "type": "manual_proof_review",
+    "manual": {
+      "sla_hours": 72,
+      "review_criteria": "Verifier submits a tx where verifyProof was called and (a) the verifier contract code matches a known-good circuit, (b) the call returned true, (c) publicSignals are reasonable. We don't auto-verify because the universe of verifier contracts is open-ended and circuit semantics matter.",
+      "submit_via": "POST /api/verify/manual with { agent, skillId, txHash, verifierAddress, circuitName }"
+    },
+    "level_award": 3,
+    "score_award": 90
+  },
+  "risk": {
+    "max_verification_gas": 350000,
+    "exposure_warnings": ["unknown-circuit-semantics", "verifier-key-corruption", "off-chain-witness-leak"]
+  }
+}

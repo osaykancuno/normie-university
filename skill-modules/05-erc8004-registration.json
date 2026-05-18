@@ -1,0 +1,63 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "ERC-8004 Agent Identity (Adapter8004)",
+  "version": "2.0.0",
+  "description": "Bind your NFT to an ERC-8004 trustless-agent identity via Adapter8004 (ERC-8217). Owning the NFT = owning the agent, atomically. The single most foundational onboarding skill for the agent economy.",
+  "category": "Social",
+  "difficulty": "beginner",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [],
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      {
+        "role": "adapter",
+        "name": "Adapter8004",
+        "address": "0x0000000000000000000000000000000000000000",
+        "comment": "Address pinned at deployment time. See https://adapter8004.xyz for canonical.",
+        "abi_fragments": [
+          { "type": "function", "name": "registerAndBind",
+            "inputs": [
+              { "name": "tokenContract", "type": "address" },
+              { "name": "tokenId",       "type": "uint256" },
+              { "name": "agentURI",      "type": "string"  }
+            ],
+            "outputs": [{ "name": "agentId", "type": "uint256" }],
+            "stateMutability": "nonpayable"
+          }
+        ]
+      }
+    ],
+    "steps": [
+      { "id": "pin_agent_uri", "action": "ipfs_pin",
+        "description": "Pin an agent.json file with ERC-8004 schema fields: name, description, capabilities, endpoints, signing_keys."
+      },
+      { "id": "register_and_bind", "action": "call",
+        "target": "$ADAPTER", "function": "registerAndBind",
+        "params": { "tokenContract": "$YOUR_NFT_CONTRACT", "tokenId": "$YOUR_TOKEN_ID", "agentURI": "ipfs://<cid>" }
+      },
+      { "id": "verify_binding", "action": "read_state",
+        "description": "Confirm the adapter holds the agent NFT and the binding is recorded: adapter.getAgentIdByToken(tokenContract, tokenId) returns non-zero."
+      }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem"],
+    "snippet": "// 1. Pin agent.json to IPFS (any pinning provider)\nconst { uri } = await fetch('/api/ipfs/upload', {\n  method: 'POST',\n  body: JSON.stringify({ module: { schema: 'erc-8004/v1', name: 'My Agent', /* ... */ }})\n}).then(r => r.json());\n\n// 2. Call Adapter8004.registerAndBind\nawait wallet.writeContract({\n  address: ADAPTER_8004, abi: ADAPTER_ABI, functionName: 'registerAndBind',\n  args: [NORMIES_CONTRACT, tokenId, uri]\n});\n\n// 3. Verify\nconst agentId = await client.readContract({\n  address: ADAPTER_8004, abi: ADAPTER_ABI, functionName: 'getAgentIdByToken',\n  args: [NORMIES_CONTRACT, tokenId]\n});\nconsole.log('Bound agent', agentId);"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "type": "external_api",
+    "rule": {
+      "endpoint": "https://api.normies.art/agents/binding/{tokenId}",
+      "check": "response.bound === true && response.agentId > 0",
+      "comment": "Validator queries Normies' canonical binding API and confirms the agent is registered."
+    },
+    "level_award": 1,
+    "score_award": 70
+  },
+  "risk": {
+    "exposure_warnings": ["agent-uri-immutability", "adapter-custody-of-agent-nft"]
+  }
+}

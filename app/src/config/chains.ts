@@ -1,17 +1,21 @@
-import { base, baseSepolia } from "wagmi/chains";
+import { mainnet, sepolia } from "wagmi/chains";
 
-/// Chain used in production
-export const PRODUCTION_CHAIN = base;
+/// Production: Ethereum L1 mainnet — same chain as Normies + ERC-8004 +
+/// Adapter8004. Native alignment with the agent identity layer.
+/// Cost model: skill purchases happen off-chain via x402 + EIP-3009 USDC.
+/// SBT credentials are issued as server-signed attestations and only
+/// committed on-chain via lazy `mintFromAttestation` when the holder
+/// explicitly wants permanent on-chain proof.
+export const PRODUCTION_CHAIN = mainnet;
 
-/// Chain used in development / testnet
-export const TESTNET_CHAIN = baseSepolia;
+/// Testnet: Sepolia (Ethereum's primary public testnet).
+export const TESTNET_CHAIN = sepolia;
 
-/// Active chain — toggle via env variable
+/// Active chain — toggle via env variable.
 export const ACTIVE_CHAIN =
   process.env.NEXT_PUBLIC_NETWORK === "mainnet" ? PRODUCTION_CHAIN : TESTNET_CHAIN;
 
-/// Chain IDs for reference
 export const CHAIN_IDS = {
-  BASE_MAINNET: base.id,      // 8453
-  BASE_SEPOLIA: baseSepolia.id, // 84532
+  ETHEREUM_MAINNET: mainnet.id, // 1
+  ETHEREUM_SEPOLIA: sepolia.id, // 11155111
 } as const;

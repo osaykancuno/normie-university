@@ -1,0 +1,77 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Uniswap V3 Swap Execution",
+  "version": "2.0.0",
+  "description": "Execute exactInputSingle swaps on Uniswap V3 (Ethereum mainnet). Covers slippage protection, deadline enforcement, gas-aware routing. The canonical agent skill for DEX trading on L1.",
+  "category": "DeFi",
+  "difficulty": "intermediate",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [],
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      {
+        "role": "router",
+        "name": "SwapRouter02",
+        "address": "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45",
+        "abi_fragments": [
+          {
+            "type": "function",
+            "name": "exactInputSingle",
+            "selector": "0x04e45aaf",
+            "inputs": [
+              { "name": "params", "type": "tuple", "components": [
+                { "name": "tokenIn",           "type": "address" },
+                { "name": "tokenOut",          "type": "address" },
+                { "name": "fee",               "type": "uint24"  },
+                { "name": "recipient",         "type": "address" },
+                { "name": "amountIn",          "type": "uint256" },
+                { "name": "amountOutMinimum",  "type": "uint256" },
+                { "name": "sqrtPriceLimitX96", "type": "uint160" }
+              ]}
+            ],
+            "outputs": [{ "name": "amountOut", "type": "uint256" }],
+            "stateMutability": "payable"
+          }
+        ]
+      }
+    ],
+    "steps": [
+      { "id": "approve", "action": "erc20_approve",
+        "params": { "token": "$INPUT_TOKEN", "spender": "$ROUTER", "amount": "$AMOUNT_IN" }
+      },
+      { "id": "swap", "action": "call",
+        "target": "$ROUTER", "function": "exactInputSingle",
+        "params": {
+          "tokenIn": "$INPUT_TOKEN", "tokenOut": "$OUTPUT_TOKEN",
+          "fee": 3000, "recipient": "$AGENT",
+          "amountIn": "$AMOUNT_IN", "amountOutMinimum": "$MIN_OUT",
+          "sqrtPriceLimitX96": 0
+        }
+      }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem"],
+    "snippet": "import { createWalletClient, http, parseUnits, getContract } from 'viem';\nimport { mainnet } from 'viem/chains';\n\nconst ROUTER = '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45';\nconst ABI = [/* exactInputSingle + erc20 approve */];\n\nasync function swap(client, tokenIn, tokenOut, amountIn, minOut) {\n  // 1. Approve router for the input token\n  await client.writeContract({\n    address: tokenIn, abi: ERC20_ABI, functionName: 'approve',\n    args: [ROUTER, amountIn]\n  });\n  // 2. Execute swap with slippage + deadline\n  return client.writeContract({\n    address: ROUTER, abi: ABI, functionName: 'exactInputSingle',\n    args: [{ tokenIn, tokenOut, fee: 3000, recipient: client.account.address,\n             amountIn, amountOutMinimum: minOut, sqrtPriceLimitX96: 0n }]\n  });\n}"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "type": "on_chain_event",
+    "rule": {
+      "event_signature": "Swap(address,address,int256,int256,uint160,uint128,int24)",
+      "topic0": "0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67",
+      "tx_to": "$ROUTER",
+      "tx_from": "$AGENT",
+      "tx_status": "success"
+    },
+    "level_award": 2,
+    "score_award": 80
+  },
+  "risk": {
+    "max_slippage_bps": 50,
+    "deadline_seconds": 300,
+    "exposure_warnings": ["sandwich-attack", "front-running", "stale-quote"]
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Aave V3 Supply & Withdraw",
+  "version": "2.0.0",
+  "description": "Supply and withdraw assets on Aave V3 Ethereum mainnet. Foundation for all yield-bearing strategies — agents earn passive yield while idle.",
+  "category": "DeFi",
+  "difficulty": "beginner",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [],
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      {
+        "role": "pool",
+        "name": "Aave V3 Pool",
+        "address": "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2",
+        "abi_fragments": [
+          {
+            "type": "function", "name": "supply", "selector": "0x617ba037",
+            "inputs": [
+              { "name": "asset",        "type": "address" },
+              { "name": "amount",       "type": "uint256" },
+              { "name": "onBehalfOf",   "type": "address" },
+              { "name": "referralCode", "type": "uint16"  }
+            ],
+            "outputs": [], "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function", "name": "withdraw", "selector": "0x69328dec",
+            "inputs": [
+              { "name": "asset",  "type": "address" },
+              { "name": "amount", "type": "uint256" },
+              { "name": "to",     "type": "address" }
+            ],
+            "outputs": [{ "name": "", "type": "uint256" }],
+            "stateMutability": "nonpayable"
+          }
+        ]
+      }
+    ],
+    "steps": [
+      { "id": "approve", "action": "erc20_approve",
+        "params": { "token": "$ASSET", "spender": "$POOL", "amount": "$AMOUNT" }
+      },
+      { "id": "supply", "action": "call", "target": "$POOL", "function": "supply",
+        "params": { "asset": "$ASSET", "amount": "$AMOUNT", "onBehalfOf": "$AGENT", "referralCode": 0 }
+      },
+      { "id": "withdraw", "action": "call", "target": "$POOL", "function": "withdraw",
+        "params": { "asset": "$ASSET", "amount": "$WITHDRAW_AMOUNT", "to": "$AGENT" },
+        "optional": true
+      }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem"],
+    "snippet": "const POOL = '0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2';\n\nawait wallet.writeContract({\n  address: USDC, abi: ERC20_ABI, functionName: 'approve',\n  args: [POOL, amount]\n});\nawait wallet.writeContract({\n  address: POOL, abi: POOL_ABI, functionName: 'supply',\n  args: [USDC, amount, wallet.account.address, 0]\n});\n// Pass type(uint256).max to withdraw full balance\nawait wallet.writeContract({\n  address: POOL, abi: POOL_ABI, functionName: 'withdraw',\n  args: [USDC, 2n**256n - 1n, wallet.account.address]\n});"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "type": "on_chain_event",
+    "rule": {
+      "event_signature": "Supply(address,address,address,uint256,uint16)",
+      "topic0": "0x2b627736bca15cd5381dcf80b0bf11fd197d01a037c52b927a881a10fb73ba61",
+      "tx_to": "$POOL",
+      "tx_from": "$AGENT",
+      "tx_status": "success"
+    },
+    "level_award": 1,
+    "score_award": 70
+  },
+  "risk": {
+    "max_supply_pct_of_balance": 95,
+    "min_health_factor": 1.5,
+    "exposure_warnings": ["smart-contract-risk", "atoken-rate-risk"]
+  }
+}

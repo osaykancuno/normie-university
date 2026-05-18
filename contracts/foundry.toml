@@ -7,6 +7,8 @@ script = "script"
 solc = "0.8.24"
 optimizer = true
 optimizer_runs = 200
+via_ir = true
+fs_permissions = [{ access = "read-write", path = "./deployments" }]
 remappings = [
     "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
     "@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/",
@@ -24,9 +26,15 @@ runs = 256
 depth = 15
 
 [rpc_endpoints]
+# Primary deployment targets — Ethereum L1 (Normies-native)
+sepolia      = "${SEPOLIA_RPC_URL}"
+mainnet      = "${MAINNET_RPC_URL}"
+# Legacy Base support (still works if needed)
 base_sepolia = "${BASE_SEPOLIA_RPC_URL}"
 base_mainnet = "${BASE_MAINNET_RPC_URL}"
 
 [etherscan]
+sepolia      = { key = "${ETHERSCAN_API_KEY}", url = "https://api-sepolia.etherscan.io/api" }
+mainnet      = { key = "${ETHERSCAN_API_KEY}", url = "https://api.etherscan.io/api" }
 base_sepolia = { key = "${BASESCAN_API_KEY}", url = "https://api-sepolia.basescan.org/api" }
 base_mainnet = { key = "${BASESCAN_API_KEY}", url = "https://api.basescan.org/api" }

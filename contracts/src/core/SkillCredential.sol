@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 import {ERC721}         from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {AccessControl}  from "@openzeppelin/contracts/access/AccessControl.sol";
 import {Pausable}       from "@openzeppelin/contracts/utils/Pausable.sol";
+import {EIP712}         from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import {ECDSA}          from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 import {ISkillCredential} from "../interfaces/ISkillCredential.sol";
 import {SkillTypes}       from "../libraries/SkillTypes.sol";
@@ -13,7 +15,8 @@ import {
     SkillAI__AlreadyCompleted,
     SkillAI__InvalidScore,
     SkillAI__InvalidLevel,
-    SkillAI__SkillNotFound
+    SkillAI__SkillNotFound,
+    SkillAI__InvalidSignature
 } from "../libraries/SkillTypes.sol";
 
 /// @title  SkillCredential
@@ -29,14 +32,29 @@ contract SkillCredential is
     ISkillCredential,
     ERC721,
     AccessControl,
-    Pausable
+    Pausable,
+    EIP712
 {
+    using ECDSA for bytes32;
+
     // =========================================================================
     //                               ROLES
     // =========================================================================
 
-    bytes32 public constant ADMIN_ROLE       = keccak256("ADMIN_ROLE");
-    bytes32 public constant MARKETPLACE_ROLE = keccak256("MARKETPLACE_ROLE");
+    bytes32 public constant ADMIN_ROLE          = keccak256("ADMIN_ROLE");
+    bytes32 public constant MARKETPLACE_ROLE    = keccak256("MARKETPLACE_ROLE");
+    /// @notice Off-chain attestation signer. The server holds this key and
+    ///         issues EIP-712 attestations after verifying skill completion.
+    ///         Users redeem attestations via `mintFromAttestation`, paying
+    ///         their own gas. This is the L1 cost-optimisation: skill
+    ///         purchases and completions are free for the user; only the
+    ///         explicit on-chain commit costs gas.
+    bytes32 public constant ATTESTATION_SIGNER  = keccak256("ATTESTATION_SIGNER");
+
+    /// @dev EIP-712 typehash for a completion attestation.
+    bytes32 private constant ATTESTATION_TYPEHASH = keccak256(
+        "SkillAttestation(address agent,uint256 skillId,uint8 level,uint256 score,uint256 deadline)"
+    );
 
     // =========================================================================
     //                              STORAGE
@@ -61,7 +79,10 @@ contract SkillCredential is
     //                            CONSTRUCTOR
     // =========================================================================
 
-    constructor(address admin) ERC721("SKILLAI Credential", "SCRED") {
+    constructor(address admin)
+        ERC721("SKILLAI Credential", "SCRED")
+        EIP712("SKILLAI Credential", "1")
+    {
         if (admin == address(0)) revert SkillAI__ZeroAddress();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(ADMIN_ROLE, admin);
@@ -108,6 +129,59 @@ contract SkillCredential is
     }
 
     // =========================================================================
+    //                    LAZY MINT (EIP-712 attestation)
+    // =========================================================================
+
+    /// @notice Mint a credential by redeeming a server-signed EIP-712 attestation.
+    /// @dev    L1 cost optimisation: after off-chain x402 purchase + verifier
+    ///         attestation, the user (or anyone on their behalf) can submit
+    ///         the attestation on-chain. The signature must come from an
+    ///         address with ATTESTATION_SIGNER role. The credential is minted
+    ///         to `agent` (the address the attestation binds to), regardless
+    ///         of who submits the tx.
+    function mintFromAttestation(
+        address agent,
+        uint256 skillId,
+        uint8 level,
+        uint256 score,
+        uint256 deadline,
+        bytes calldata signature
+    ) external whenNotPaused returns (uint256 tokenId) {
+        if (agent == address(0)) revert SkillAI__ZeroAddress();
+        if (block.timestamp > deadline) revert SkillAI__InvalidSignature();
+        if (skillId == 0) revert SkillAI__SkillNotFound(skillId);
+        if (level < 1 || level > 3) revert SkillAI__InvalidLevel(level);
+        if (score > 100) revert SkillAI__InvalidScore(score);
+        if (_agentSkillToToken[agent][skillId] != 0) {
+            revert SkillAI__AlreadyCompleted(agent, skillId);
+        }
+
+        bytes32 structHash = keccak256(abi.encode(
+            ATTESTATION_TYPEHASH, agent, skillId, level, score, deadline
+        ));
+        bytes32 digest = _hashTypedDataV4(structHash);
+        address signer = digest.recover(signature);
+        if (!hasRole(ATTESTATION_SIGNER, signer)) revert SkillAI__InvalidSignature();
+
+        tokenId = _nextTokenId++;
+        _safeMint(agent, tokenId);
+        _credentials[tokenId] = SkillTypes.CredentialData({
+            tokenId: tokenId,
+            agent: agent,
+            skillId: skillId,
+            level: level,
+            score: score,
+            acquiredAt: block.timestamp,
+            verified: true
+        });
+        _agentSkillToToken[agent][skillId] = tokenId;
+        _agentTokenIds[agent].push(tokenId);
+        _agentSkillIds[agent].push(skillId);
+
+        emit CredentialMinted(tokenId, agent, skillId, level, score, block.timestamp);
+    }
+
+    // =========================================================================
     //                    SOULBOUND — TRANSFER BLOCKED
     // =========================================================================
 
@@ -144,6 +218,15 @@ contract SkillCredential is
     // =========================================================================
 
     /// @notice Grant marketplace role (e.g., after deploying marketplace contract)
+    function grantAttestationSigner(address signer) external onlyRole(ADMIN_ROLE) {
+        if (signer == address(0)) revert SkillAI__ZeroAddress();
+        _grantRole(ATTESTATION_SIGNER, signer);
+    }
+
+    function revokeAttestationSigner(address signer) external onlyRole(ADMIN_ROLE) {
+        _revokeRole(ATTESTATION_SIGNER, signer);
+    }
+
     function grantMarketplaceRole(address marketplace) external onlyRole(ADMIN_ROLE) {
         if (marketplace == address(0)) revert SkillAI__ZeroAddress();
         _grantRole(MARKETPLACE_ROLE, marketplace);

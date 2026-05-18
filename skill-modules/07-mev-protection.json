@@ -1,0 +1,45 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "MEV Protection (Flashbots Protect + Slippage Discipline)",
+  "version": "2.0.0",
+  "description": "Submit swap transactions through a private relay (Flashbots Protect, MEV-Blocker, BloXroute) to avoid sandwich attacks, while enforcing tight slippage bounds. Behavioural skill — verified by sampling the agent's recent trades.",
+  "category": "Security",
+  "difficulty": "advanced",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [1],
+  "executable": {
+    "kind": "behavioural",
+    "contracts": [],
+    "steps": [
+      { "id": "select_relay", "action": "configure_rpc",
+        "description": "Set wallet RPC to a private mempool: Flashbots Protect (https://rpc.flashbots.net/fast) or MEV-Blocker (https://rpc.mevblocker.io)." },
+      { "id": "tight_slippage", "action": "policy",
+        "description": "Set amountOutMinimum = quote × (1 - 0.5%) for stables and (1 - 1%) for volatile pairs. Reject swaps that exceed this slippage." },
+      { "id": "tight_deadline", "action": "policy",
+        "description": "Set deadline = block.timestamp + 60s for time-sensitive swaps to minimize re-org risk." },
+      { "id": "split_large_orders", "action": "policy",
+        "description": "Split orders > 1% of pool liquidity into N smaller chunks to dilute MEV opportunity." }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem"],
+    "snippet": "// Use a private RPC for the wallet client\nconst walletClient = createWalletClient({\n  account, chain: mainnet,\n  transport: http('https://rpc.flashbots.net/fast')  // or MEV-Blocker, Eden\n});\n\n// Enforce tight slippage at swap time\nconst quote = await getQuote(tokenIn, tokenOut, amountIn);\nconst slippageBps = stableToStable ? 50n : 100n;\nconst amountOutMin = (quote * (10000n - slippageBps)) / 10000n;\n\n// Reject if quote moved more than tolerance\nconst freshQuote = await getQuote(tokenIn, tokenOut, amountIn);\nif (freshQuote < amountOutMin) throw new Error('Slippage violation — abort');"
+  },
+  "verification": {
+    "auto_verifiable": false,
+    "type": "manual_behavioural_review",
+    "manual": {
+      "sla_hours": 72,
+      "review_criteria": "Verifier samples the agent's 3 most recent swaps. Confirms: (1) all originated from a private relay (Flashbots / MEV-Blocker / Eden coinbase tip pattern), (2) all had amountOutMinimum within the declared bounds, (3) none was sandwiched (no large buy-sell-buy pattern in the same block).",
+      "submit_via": "POST /api/verify/manual with { agent, skillId, txHashes: [tx1, tx2, tx3] }"
+    },
+    "level_award": 3,
+    "score_award": 85
+  },
+  "risk": {
+    "max_per_swap_usd": 10000,
+    "max_acceptable_loss_bps": 100,
+    "exposure_warnings": ["private-relay-uptime", "relay-trust-assumption"]
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "EIP-2981 Royalty Enforcement",
+  "version": "2.0.0",
+  "description": "Read EIP-2981 royalty info from any NFT collection and route the correct payment to the creator on every secondary sale your agent executes. Demonstrates respect for creator economics — a Normies-friendly skill.",
+  "category": "NFT",
+  "difficulty": "intermediate",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [9],
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      {
+        "role": "nft_collection",
+        "address": "0x*",
+        "abi_fragments": [
+          { "type": "function", "name": "supportsInterface",
+            "inputs": [{ "name": "interfaceId", "type": "bytes4" }],
+            "outputs": [{ "name": "", "type": "bool" }], "stateMutability": "view"
+          },
+          { "type": "function", "name": "royaltyInfo",
+            "inputs": [
+              { "name": "tokenId",   "type": "uint256" },
+              { "name": "salePrice", "type": "uint256" }
+            ],
+            "outputs": [
+              { "name": "receiver", "type": "address" },
+              { "name": "amount",   "type": "uint256" }
+            ],
+            "stateMutability": "view"
+          }
+        ]
+      }
+    ],
+    "steps": [
+      { "id": "supports_2981", "action": "read_state",
+        "description": "supportsInterface(0x2a55205a) must return true." },
+      { "id": "fetch_royalty", "action": "read_state",
+        "description": "royaltyInfo(tokenId, salePrice) → (receiver, amount). Compute these BEFORE quoting the sale." },
+      { "id": "split_payment", "action": "atomic_multicall",
+        "description": "In a single tx: transfer NFT to buyer, pay `amount` to `receiver`, pay (salePrice - amount) to seller." }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem"],
+    "snippet": "const ERC2981 = '0x2a55205a';\n\nconst is2981 = await client.readContract({\n  address: collection, abi: NFT_ABI, functionName: 'supportsInterface', args: [ERC2981]\n});\nif (!is2981) throw new Error('Collection does not implement EIP-2981');\n\nconst [receiver, royaltyAmount] = await client.readContract({\n  address: collection, abi: NFT_ABI, functionName: 'royaltyInfo',\n  args: [tokenId, salePrice]\n});\n\n// Execute sale atomically (e.g., via marketplace contract that respects 2981)\nawait wallet.sendTransaction({\n  to: marketplace, data: encodeFunctionData({\n    abi: MARKETPLACE_ABI, functionName: 'sellWithRoyalty',\n    args: [collection, tokenId, buyer, salePrice, receiver, royaltyAmount]\n  })\n});"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "type": "on_chain_event_tuple",
+    "rule": {
+      "must_contain_both": [
+        { "event_signature": "Transfer(address,address,uint256)",
+          "topic0": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+          "indexed_count": 4,
+          "comment": "ERC-721 transfer of NFT to buyer." },
+        { "value_paid_to": "$ROYALTY_RECEIVER",
+          "min_amount": "$ROYALTY_AMOUNT",
+          "comment": "Payment of at least royalty amount to the EIP-2981 receiver." }
+      ],
+      "tx_status": "success"
+    },
+    "level_award": 2,
+    "score_award": 80
+  },
+  "risk": {
+    "max_royalty_bps_acceptable": 1500,
+    "exposure_warnings": ["off-chain-royalty-spoofing", "marketplace-bypass"]
+  }
+}

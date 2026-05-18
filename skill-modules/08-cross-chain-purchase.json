@@ -1,0 +1,78 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Cross-Chain Skill Purchase (LayerZero)",
+  "version": "2.0.0",
+  "description": "Buy a SKILLAI skill from any L2 / sidechain by bridging USDC to Ethereum L1 via LayerZero. Funds settle on L1, the credential mints on L1, the agent keeps operating on its home chain. Demonstrates the full cross-chain agent commerce loop.",
+  "category": "CrossChain",
+  "difficulty": "expert",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [4, 5],
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      {
+        "role": "lz_endpoint",
+        "name": "LayerZero V2 Endpoint (mainnet)",
+        "address": "0x1a44076050125825900e736c501f859c50fE728c",
+        "abi_fragments": [
+          { "type": "function", "name": "send",
+            "inputs": [
+              { "name": "params",            "type": "tuple", "components": [
+                { "name": "dstEid",    "type": "uint32" },
+                { "name": "receiver",  "type": "bytes32" },
+                { "name": "message",   "type": "bytes"  },
+                { "name": "options",   "type": "bytes"  },
+                { "name": "payInLzToken", "type": "bool" }
+              ]},
+              { "name": "refundAddress",     "type": "address" }
+            ],
+            "outputs": [{ "name": "receipt", "type": "tuple", "components": [
+              { "name": "guid", "type": "bytes32" },
+              { "name": "nonce", "type": "uint64" }
+            ]}],
+            "stateMutability": "payable"
+          }
+        ]
+      }
+    ],
+    "steps": [
+      { "id": "encode_message", "action": "encode",
+        "description": "abi.encode(onBehalfOf, skillId, amount, paidInUsdc=true) — the SKILLAI CrossChainReceiver payload." },
+      { "id": "approve_and_send", "action": "call",
+        "target": "$LZ_ENDPOINT", "function": "send",
+        "params": {
+          "dstEid": 30101,
+          "receiver": "$SKILLAI_RECEIVER_BYTES32",
+          "message": "$ENCODED",
+          "options": "0x00030100210100000000000000000000000000030d40",
+          "payInLzToken": false
+        }
+      },
+      { "id": "wait_for_delivery", "action": "wait",
+        "description": "LayerZero relays the message + funds to L1. The CrossChainReceiver dispatches purchaseSkillCrossChain() on SkillMarketplace. Typical finality: 5-15 min." }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem"],
+    "snippet": "// Encode SKILLAI receiver payload\nconst message = encodeAbiParameters(\n  [{ type:'address'},{type:'uint256'},{type:'uint256'},{type:'bool'}],\n  [agent, skillId, amount, true]\n);\n\n// Pad receiver to bytes32 for LayerZero\nconst receiver = ('0x' + SKILLAI_RECEIVER.slice(2).padStart(64, '0')) as Hex;\n\nawait wallet.writeContract({\n  address: LZ_ENDPOINT, abi: LZ_ABI, functionName: 'send',\n  args: [{\n    dstEid: 30101, // Ethereum mainnet endpoint id\n    receiver, message,\n    options: '0x00030100210100000000000000000000000000030d40',\n    payInLzToken: false\n  }, refundAddress],\n  value: layerZeroFee\n});"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "type": "on_chain_event",
+    "rule": {
+      "event_signature": "SkillPurchased(address,uint256,uint256,bool,uint256)",
+      "topic0_comment": "Computed at deploy time from SkillMarketplace event signature",
+      "tx_to": "$SKILLAI_MARKETPLACE",
+      "indexed_agent": "$AGENT",
+      "comment": "Validator scans recent SkillPurchased events on the SKILLAI marketplace and confirms one with agent = msg-payload sender (paidInUsdc=true) within 24h of the LayerZero send tx."
+    },
+    "level_award": 3,
+    "score_award": 90
+  },
+  "risk": {
+    "max_bridge_fee_bps": 50,
+    "max_finality_seconds": 1800,
+    "exposure_warnings": ["bridge-trust-assumption", "stuck-messages", "fee-token-volatility"]
+  }
+}

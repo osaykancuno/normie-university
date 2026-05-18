@@ -1,0 +1,62 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "ERC-721 Minting (OpenZeppelin pattern)",
+  "version": "2.0.0",
+  "description": "Mint an ERC-721 token to your agent address using a standard public mint or safeMint function. Foundation skill for any NFT-touching agent.",
+  "category": "NFT",
+  "difficulty": "beginner",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [],
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      {
+        "role": "nft_collection",
+        "name": "Target ERC-721 collection",
+        "address": "0x*",
+        "comment": "Agent supplies the collection address per task.",
+        "abi_fragments": [
+          { "type": "function", "name": "mint", "inputs": [{ "name":"to", "type":"address"}], "outputs": [], "stateMutability": "payable" },
+          { "type": "function", "name": "safeMint", "inputs": [{ "name":"to", "type":"address"}], "outputs": [], "stateMutability": "payable" },
+          { "type": "function", "name": "ownerOf", "inputs": [{ "name":"tokenId","type":"uint256"}], "outputs":[{"name":"","type":"address"}], "stateMutability":"view" },
+          { "type": "function", "name": "totalSupply", "inputs": [], "outputs":[{"name":"","type":"uint256"}], "stateMutability":"view" }
+        ]
+      }
+    ],
+    "steps": [
+      { "id": "preflight",   "action": "read_state",
+        "description": "Read totalSupply / maxSupply to confirm mint is still open, and quote mint fee via callStatic." },
+      { "id": "estimate_gas","action": "estimate_gas",
+        "description": "eth_estimateGas to surface ACL or mint-cap reverts before sending value." },
+      { "id": "submit_mint", "action": "call",
+        "target": "$COLLECTION", "function": "safeMint",
+        "params": { "to": "$AGENT" } },
+      { "id": "verify_owner","action": "read_state",
+        "description": "ownerOf(tokenId) returns the agent address." }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem"],
+    "snippet": "const tx = await wallet.writeContract({\n  address: COLLECTION, abi: NFT_ABI,\n  functionName: 'safeMint', args: [agent], value: mintFee\n});\nconst receipt = await client.waitForTransactionReceipt({ hash: tx });\nconst mintedTokenId = receipt.logs.find(l => l.topics[0] === TRANSFER_TOPIC)?.topics[3];\nconst owner = await client.readContract({\n  address: COLLECTION, abi: NFT_ABI, functionName: 'ownerOf', args: [BigInt(mintedTokenId)]\n});\nassert(owner.toLowerCase() === agent.toLowerCase());"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "type": "on_chain_event",
+    "rule": {
+      "event_signature": "Transfer(address,address,uint256)",
+      "topic0": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "indexed_from": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "indexed_to": "$AGENT",
+      "indexed_count": 3,
+      "comment": "Validator confirms a 4-topic Transfer (ERC-721, not ERC-20) event with from=0x0 and to=agent."
+    },
+    "level_award": 1,
+    "score_award": 75
+  },
+  "risk": {
+    "max_mint_fee_eth": 0.05,
+    "max_gas_units": 250000,
+    "exposure_warnings": ["unverified-contract", "mint-cap-race", "free-mint-bot-competition"]
+  }
+}

@@ -38,6 +38,10 @@ contract SkillRegistry is
 
     bytes32 public constant ADMIN_ROLE       = keccak256("ADMIN_ROLE");
     bytes32 public constant MARKETPLACE_ROLE = keccak256("MARKETPLACE_ROLE");
+    /// @notice Allowed publishers. The protocol curates v1, opens to UGC in v2 by
+    ///         granting CREATOR_ROLE to additional addresses (or revoking the gate
+    ///         altogether by writing a permissionless wrapper).
+    bytes32 public constant CREATOR_ROLE     = keccak256("CREATOR_ROLE");
 
     // =========================================================================
     //                              STORAGE
@@ -69,6 +73,8 @@ contract SkillRegistry is
         if (admin == address(0)) revert SkillAI__ZeroAddress();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(ADMIN_ROLE, admin);
+        // Admin is the seed creator — protocol-curated launch posture.
+        _grantRole(CREATOR_ROLE, admin);
     }
 
     // =========================================================================
@@ -76,9 +82,12 @@ contract SkillRegistry is
     // =========================================================================
 
     /// @inheritdoc ISkillRegistry
+    /// @dev Gated by CREATOR_ROLE. The protocol curates the launch catalogue;
+    ///      additional publishers are onboarded by granting them CREATOR_ROLE.
     function createSkill(SkillTypes.SkillParams calldata params)
         external
         override
+        onlyRole(CREATOR_ROLE)
         whenNotPaused
         nonReentrant
         returns (uint256 skillId)
@@ -226,6 +235,17 @@ contract SkillRegistry is
 
     function revokeMarketplaceRole(address marketplace) external onlyRole(ADMIN_ROLE) {
         _revokeRole(MARKETPLACE_ROLE, marketplace);
+    }
+
+    /// @notice Onboard a new publisher (partner / community curator / DAO).
+    function grantCreatorRole(address creator) external onlyRole(ADMIN_ROLE) {
+        if (creator == address(0)) revert SkillAI__ZeroAddress();
+        _grantRole(CREATOR_ROLE, creator);
+    }
+
+    /// @notice Remove a publisher's right to create new skills.
+    function revokeCreatorRole(address creator) external onlyRole(ADMIN_ROLE) {
+        _revokeRole(CREATOR_ROLE, creator);
     }
 
     function pause() external onlyRole(ADMIN_ROLE) {

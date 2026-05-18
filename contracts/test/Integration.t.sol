@@ -28,6 +28,7 @@ contract IntegrationTest is Test {
 
         vm.startPrank(admin);
         skillReg.grantMarketplaceRole(mockMarketplace);
+        skillReg.grantCreatorRole(creator);
         cred.grantMarketplaceRole(mockMarketplace);
         vm.stopPrank();
     }

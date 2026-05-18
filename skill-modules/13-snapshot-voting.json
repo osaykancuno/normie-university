@@ -1,0 +1,66 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Snapshot Off-Chain Governance Voting",
+  "version": "2.0.0",
+  "description": "Cast off-chain governance votes on Snapshot.org via EIP-712 signatures. Covers strategy verification, voting weight calculation at snapshot block, and proposal lifecycle awareness. The standard governance skill for any agent representing a DAO position.",
+  "category": "Governance",
+  "difficulty": "intermediate",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [3],
+  "executable": {
+    "kind": "signed_message_offchain_submit",
+    "contracts": [],
+    "external_endpoints": [
+      { "role": "snapshot_hub",  "url": "https://hub.snapshot.org/graphql" },
+      { "role": "snapshot_relay","url": "https://seq.snapshot.org/" }
+    ],
+    "steps": [
+      { "id": "fetch_proposal", "action": "http_get_graphql",
+        "description": "Query proposal { id, choices, snapshot, strategies, end } from the hub. Reject if end < now()." },
+      { "id": "verify_weight",  "action": "compute_strategy",
+        "description": "Resolve voting weight at the snapshot block using the proposal's strategies (erc20-balance-of, delegation, multichain, etc.). Reject if weight = 0." },
+      { "id": "sign_typed_data","action": "sign_typed_data",
+        "params": {
+          "domain": { "name": "snapshot", "version": "0.1.4" },
+          "types": {
+            "Vote": [
+              { "name": "from",     "type": "address" },
+              { "name": "space",    "type": "string"  },
+              { "name": "timestamp","type": "uint64"  },
+              { "name": "proposal", "type": "bytes32" },
+              { "name": "choice",   "type": "uint32"  },
+              { "name": "reason",   "type": "string"  },
+              { "name": "app",      "type": "string"  },
+              { "name": "metadata", "type": "string"  }
+            ]
+          },
+          "primaryType": "Vote",
+          "message": { "from": "$AGENT", "space": "$SPACE", "timestamp": "$NOW", "proposal": "$PROPOSAL_ID", "choice": "$CHOICE", "reason": "$REASON", "app": "skillai", "metadata": "{}" }
+        }
+      },
+      { "id": "submit_envelope","action": "http_post",
+        "description": "POST { address, sig, data } to https://seq.snapshot.org/. Returns receipt with vote id." }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem"],
+    "snippet": "const HUB = 'https://hub.snapshot.org/graphql';\nconst RELAY = 'https://seq.snapshot.org/';\n\n// 1. Fetch active proposal\nconst proposal = await fetch(HUB, {\n  method: 'POST', headers: { 'content-type': 'application/json' },\n  body: JSON.stringify({ query: `{ proposal(id: \"${id}\") { id space { id } choices snapshot end } }` })\n}).then(r => r.json()).then(r => r.data.proposal);\n\nif (proposal.end * 1000 < Date.now()) throw new Error('Proposal closed');\n\n// 2. Sign Vote typed data\nconst signature = await wallet.signTypedData({\n  domain: { name: 'snapshot', version: '0.1.4' },\n  types: { Vote: [/* fields */] },\n  primaryType: 'Vote',\n  message: { from: agent, space: proposal.space.id, timestamp: BigInt(Math.floor(Date.now()/1000)),\n             proposal: proposal.id, choice, reason, app: 'skillai', metadata: '{}' }\n});\n\n// 3. Submit envelope\nconst receipt = await fetch(RELAY, {\n  method: 'POST', headers: { 'content-type': 'application/json' },\n  body: JSON.stringify({ address: agent, sig: signature, data: { domain: ..., types: ..., message: ... } })\n}).then(r => r.json());\nconsole.log('vote id', receipt.id);"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "type": "external_api",
+    "rule": {
+      "endpoint": "https://hub.snapshot.org/api/votes",
+      "query": { "voter": "$AGENT" },
+      "check": "any vote where voter.toLowerCase() === agent.toLowerCase() && created > now - 7 days",
+      "comment": "Validator queries Snapshot Hub for the agent's recent votes and confirms at least one was cast in the last 7 days."
+    },
+    "level_award": 2,
+    "score_award": 75
+  },
+  "risk": {
+    "min_voting_weight": 0,
+    "exposure_warnings": ["proposal-spoofing", "stale-snapshot-block"]
+  }
+}

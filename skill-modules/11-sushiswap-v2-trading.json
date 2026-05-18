@@ -1,0 +1,75 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Sushiswap V2 Trading",
+  "version": "2.0.0",
+  "description": "Execute optimal swaps on Sushiswap V2 (Ethereum mainnet) — the classic constant-product AMM. Covers route building (single-hop vs WETH-bridge), slippage protection, and deadline enforcement.",
+  "category": "Trading",
+  "difficulty": "intermediate",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [1],
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      {
+        "role": "router",
+        "name": "Sushiswap V2 Router",
+        "address": "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F",
+        "abi_fragments": [
+          { "type": "function", "name": "getAmountsOut",
+            "inputs": [
+              { "name": "amountIn", "type": "uint256" },
+              { "name": "path",     "type": "address[]" }
+            ],
+            "outputs": [{ "name": "amounts", "type": "uint256[]" }],
+            "stateMutability": "view"
+          },
+          { "type": "function", "name": "swapExactTokensForTokens",
+            "selector": "0x38ed1739",
+            "inputs": [
+              { "name": "amountIn",     "type": "uint256" },
+              { "name": "amountOutMin", "type": "uint256" },
+              { "name": "path",         "type": "address[]" },
+              { "name": "to",           "type": "address" },
+              { "name": "deadline",     "type": "uint256" }
+            ],
+            "outputs": [{ "name": "amounts", "type": "uint256[]" }],
+            "stateMutability": "nonpayable"
+          }
+        ]
+      }
+    ],
+    "steps": [
+      { "id": "quote_route", "action": "read_state",
+        "description": "Call getAmountsOut for [tokenIn, tokenOut] and [tokenIn, WETH, tokenOut]; pick the path with higher amountOut." },
+      { "id": "approve",     "action": "erc20_approve",
+        "params": { "token": "$TOKEN_IN", "spender": "$ROUTER", "amount": "$AMOUNT_IN" } },
+      { "id": "swap",        "action": "call",
+        "target": "$ROUTER", "function": "swapExactTokensForTokens",
+        "params": { "amountIn": "$AMOUNT_IN", "amountOutMin": "$MIN_OUT", "path": "$PATH", "to": "$AGENT", "deadline": "$NOW+300" } }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem"],
+    "snippet": "const ROUTER = '0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F';\nconst WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';\n\nconst [, directOut] = await client.readContract({\n  address: ROUTER, abi: ROUTER_ABI, functionName: 'getAmountsOut',\n  args: [amountIn, [tokenIn, tokenOut]]\n});\nconst [, , bridgedOut] = await client.readContract({\n  address: ROUTER, abi: ROUTER_ABI, functionName: 'getAmountsOut',\n  args: [amountIn, [tokenIn, WETH, tokenOut]]\n});\nconst path = directOut > bridgedOut ? [tokenIn, tokenOut] : [tokenIn, WETH, tokenOut];\nconst quote = directOut > bridgedOut ? directOut : bridgedOut;\nconst amountOutMin = (quote * 9900n) / 10000n; // 1% slippage\n\nawait wallet.writeContract({ address: tokenIn, abi: ERC20_ABI, functionName: 'approve', args: [ROUTER, amountIn] });\nawait wallet.writeContract({\n  address: ROUTER, abi: ROUTER_ABI, functionName: 'swapExactTokensForTokens',\n  args: [amountIn, amountOutMin, path, agent, BigInt(Math.floor(Date.now()/1000) + 300)]\n});"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "type": "on_chain_event",
+    "rule": {
+      "event_signature": "Swap(address,uint256,uint256,uint256,uint256,address)",
+      "topic0": "0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822",
+      "tx_to": "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F",
+      "tx_from": "$AGENT",
+      "tx_status": "success"
+    },
+    "level_award": 2,
+    "score_award": 80
+  },
+  "risk": {
+    "max_slippage_bps_stable": 50,
+    "max_slippage_bps_volatile": 100,
+    "deadline_seconds": 300,
+    "exposure_warnings": ["sandwich-attack", "stale-quote", "low-liquidity-tail-pair"]
+  }
+}

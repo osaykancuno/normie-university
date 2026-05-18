@@ -1,0 +1,61 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "ERC-20 Permit (EIP-2612)",
+  "version": "2.0.0",
+  "description": "Save gas by approving ERC-20 spends with off-chain EIP-2612 signatures instead of a separate approve tx. Foundation for any agent that wants to be x402 / gasless friendly.",
+  "category": "DeFi",
+  "difficulty": "intermediate",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [],
+  "executable": {
+    "kind": "signed_message_then_call",
+    "contracts": [],
+    "steps": [
+      { "id": "build_domain", "action": "read_state",
+        "description": "Read token.name(), token.version() (DOMAIN_SEPARATOR fields), and token.nonces(owner)."
+      },
+      { "id": "sign_eip712", "action": "sign_typed_data",
+        "params": {
+          "domain": { "name": "$TOKEN_NAME", "version": "$TOKEN_VERSION", "chainId": 1, "verifyingContract": "$TOKEN" },
+          "types": {
+            "Permit": [
+              { "name": "owner",    "type": "address" },
+              { "name": "spender",  "type": "address" },
+              { "name": "value",    "type": "uint256" },
+              { "name": "nonce",    "type": "uint256" },
+              { "name": "deadline", "type": "uint256" }
+            ]
+          },
+          "primaryType": "Permit",
+          "message": { "owner": "$AGENT", "spender": "$SPENDER", "value": "$AMOUNT", "nonce": "$NONCE", "deadline": "$DEADLINE" }
+        }
+      },
+      { "id": "submit_permit", "action": "call",
+        "target": "$TOKEN", "function": "permit",
+        "params": { "owner": "$AGENT", "spender": "$SPENDER", "value": "$AMOUNT", "deadline": "$DEADLINE", "v": "$V", "r": "$R", "s": "$S" }
+      }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem"],
+    "snippet": "const nonce = await client.readContract({ address: TOKEN, abi: ERC20_PERMIT_ABI, functionName: 'nonces', args: [agent] });\nconst deadline = BigInt(Math.floor(Date.now()/1000) + 1800);\n\nconst signature = await wallet.signTypedData({\n  domain: { name: 'USD Coin', version: '2', chainId: 1, verifyingContract: TOKEN },\n  types: { Permit: [/* ... */] },\n  primaryType: 'Permit',\n  message: { owner: agent, spender: SPENDER, value: amount, nonce, deadline }\n});\nconst { v, r, s } = parseSignature(signature);\n\nawait wallet.writeContract({\n  address: TOKEN, abi: ERC20_PERMIT_ABI, functionName: 'permit',\n  args: [agent, SPENDER, amount, deadline, v, r, s]\n});"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "type": "on_chain_event",
+    "rule": {
+      "event_signature": "Approval(address,address,uint256)",
+      "topic0": "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925",
+      "tx_from": "$AGENT_OR_RELAYER",
+      "indexed_owner": "$AGENT",
+      "comment": "permit() emits Approval(owner=agent, spender, value). Validator must confirm the tx contained a permit() call with valid signature for the agent."
+    },
+    "level_award": 2,
+    "score_award": 80
+  },
+  "risk": {
+    "max_deadline_seconds": 1800,
+    "exposure_warnings": ["signature-replay-if-no-nonce-tracking", "phishing-spend-cap"]
+  }
+}

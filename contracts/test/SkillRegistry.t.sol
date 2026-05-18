@@ -25,8 +25,10 @@ contract SkillRegistryTest is Test {
 
     function setUp() public {
         reg = new SkillRegistry(admin);
-        vm.prank(admin);
+        vm.startPrank(admin);
         reg.grantMarketplaceRole(marketplace);
+        reg.grantCreatorRole(creator);
+        vm.stopPrank();
     }
 
     // ------------------------------------------------------------------
@@ -82,6 +84,46 @@ contract SkillRegistryTest is Test {
         assertEq(s.priceInWei, 0.01 ether);
         assertEq(uint8(s.category), uint8(SkillTypes.Category.DeFi));
         assertTrue(s.isActive);
+    }
+
+    function test_CreateSkill_RevertsIfCallerLacksCreatorRole() public {
+        // Pre-build memory params so they don't consume the upcoming prank
+        SkillTypes.SkillParams memory params = _validParams();
+        bytes32 role = reg.CREATOR_ROLE();
+        bytes memory expected = abi.encodeWithSelector(
+            IAccessControl.AccessControlUnauthorizedAccount.selector,
+            attacker, role
+        );
+        vm.prank(attacker);
+        vm.expectRevert(expected);
+        reg.createSkill(params);
+    }
+
+    function test_GrantCreatorRole_AllowsNewPublisher() public {
+        address partner = address(0xBEEF);
+        vm.prank(admin);
+        reg.grantCreatorRole(partner);
+
+        vm.prank(partner);
+        uint256 id = reg.createSkill(_validParams());
+        assertEq(id, 1);
+        assertEq(reg.getSkill(id).creator, partner);
+    }
+
+    function test_RevokeCreatorRole_BlocksFurtherPublishing() public {
+        SkillTypes.SkillParams memory params = _validParams();
+        bytes32 role = reg.CREATOR_ROLE();
+
+        vm.prank(admin);
+        reg.revokeCreatorRole(creator);
+
+        bytes memory expected = abi.encodeWithSelector(
+            IAccessControl.AccessControlUnauthorizedAccount.selector,
+            creator, role
+        );
+        vm.prank(creator);
+        vm.expectRevert(expected);
+        reg.createSkill(params);
     }
 
     function test_CreateSkill_RegistersInCategoryAndCreator() public {

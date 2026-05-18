@@ -1,26 +1,71 @@
 @import "tailwindcss";
 
+/* ===========================================================================
+   NORMIE UNIVERSITY · Normies-aligned palette
+   Source: api.normies.art renders use bg #e3e5e4, ink #48494b.
+   We extend with a light "paper" tone for a cohesive academy aesthetic.
+   =========================================================================== */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Surfaces */
+  --paper:        #f5f4f0;
+  --canvas:       #e3e5e4;
+  --surface:      #ffffff;
+  --surface-2:    #ececea;
+  --line:         #d4d4d0;
+  --line-strong:  #48494b;
+
+  /* Ink */
+  --ink:          #48494b;
+  --ink-soft:     #6b6c6e;
+  --ink-muted:    #98999b;
+  --ink-faint:    #c8c9ca;
+
+  /* Accents */
+  --accent:       #48494b;
+  --accent-warm:  #c2410c;
+  --accent-ok:    #166534;
+  --accent-warn:  #a16207;
+  --accent-err:   #991b1b;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background:    var(--paper);
+  --color-foreground:    var(--ink);
+  --color-paper:         var(--paper);
+  --color-canvas:        var(--canvas);
+  --color-surface:       var(--surface);
+  --color-surface-2:     var(--surface-2);
+  --color-line:          var(--line);
+  --color-line-strong:   var(--line-strong);
+  --color-ink:           var(--ink);
+  --color-ink-soft:      var(--ink-soft);
+  --color-ink-muted:     var(--ink-muted);
+  --color-ink-faint:     var(--ink-faint);
+  --color-accent:        var(--accent);
+  --color-accent-warm:   var(--accent-warm);
+  --color-accent-ok:     var(--accent-ok);
+  --color-accent-warn:   var(--accent-warn);
+  --color-accent-err:    var(--accent-err);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  -webkit-font-smoothing: antialiased;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.pixel { image-rendering: pixelated; }
+
+.rule {
+  height: 1px;
+  background: var(--line);
+  width: 100%;
 }
+
+.mono { font-family: var(--font-geist-mono), ui-monospace, monospace; }

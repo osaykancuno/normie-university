@@ -1,0 +1,71 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Normies Agent API Integration",
+  "version": "2.0.0",
+  "description": "Read and use the Normies on-chain data + agent layer: pixel bitmaps, traits, persona, A2A Agent Card, ERC-8004 binding via Adapter8004. Lets your agent discover, address, and interact with the awakened Normies fleet.",
+  "category": "NFT",
+  "difficulty": "intermediate",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [9],
+  "executable": {
+    "kind": "external_api_then_optional_call",
+    "contracts": [
+      { "role": "normies_erc721",   "name": "Normies",          "address": "0x9Eb6E2025B64f340691e424b7fe7022fFDE12438" },
+      { "role": "normies_storage",  "name": "NormiesStorage",   "address": "0x1B976bAf51cF51F0e369C070d47FBc47A706e602" },
+      { "role": "normies_canvas",   "name": "NormiesCanvas",    "address": "0x64951d92e345C50381267380e2975f66810E869c" },
+      { "role": "normies_renderer4","name": "RendererV4",       "address": "0x8eC46Cc1f306652868a4dfbAAae87CBa2715A0eB" },
+      { "role": "adapter_8004",     "name": "Adapter8004",      "address": "0x*",
+        "comment": "ERC-8217 adapter that owns the agent NFT and binds it to the Normie. See adapter8004.xyz for the canonical address." }
+    ],
+    "external_endpoints": [
+      { "role": "normies_api", "url": "https://api.normies.art",
+        "endpoints": [
+          "/holders/{address}",
+          "/normie/{id}/pixels",
+          "/normie/{id}/traits",
+          "/normie/{id}/image.svg",
+          "/agents/binding/{tokenId}",
+          "/agents/info/{tokenId}",
+          "/agents/agent-card/{tokenId}",
+          "/agents/persona-preview/{tokenId}"
+        ],
+        "rate_limit": "60 req/min/IP"
+      }
+    ],
+    "steps": [
+      { "id": "discover_holdings",   "action": "http_get",
+        "description": "GET /holders/{address} -> tokenIds the wallet holds." },
+      { "id": "read_persona",        "action": "http_get",
+        "description": "GET /agents/info/{tokenId} -> full deterministic persona." },
+      { "id": "discover_via_a2a",    "action": "http_get",
+        "description": "GET /agents/agent-card/{tokenId} -> A2A Agent Card (skills, endpoints, version)." },
+      { "id": "verify_binding",      "action": "http_get",
+        "description": "GET /agents/binding/{tokenId} -> { tokenId, agentId, bound, adapter }." }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": [],
+    "snippet": "const BASE = 'https://api.normies.art';\n\n// 1. Find the agent's Normie tokens\nconst { tokenIds } = await fetch(`${BASE}/holders/${agent}`).then(r => r.json());\n\nfor (const id of tokenIds) {\n  // 2. Pull the deterministic persona (regenerated live from canvas state)\n  const persona = await fetch(`${BASE}/agents/info/${id}`).then(r => r.json());\n  console.log(`#${id} -> ${persona.name}: \"${persona.tagline}\"`);\n\n  // 3. Get the A2A Agent Card for inter-agent discovery\n  const card = await fetch(`${BASE}/agents/agent-card/${id}`).then(r => r.json());\n\n  // 4. Confirm ERC-8004 binding via Adapter8004\n  const binding = await fetch(`${BASE}/agents/binding/${id}`).then(r => r.json());\n  if (!binding.bound) console.warn(`#${id} is not yet awakened`);\n}\n\n// Respect the 60 req/min rate limit -- batch + cache responses.",
+    "best_practices": [
+      "Cache /agents/info responses for 60s — canvas state changes slowly.",
+      "Use /agents/binding/batch for many tokens to amortize requests.",
+      "Always check binding.bound === true before treating a tokenId as an active agent."
+    ]
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "type": "external_api_with_proof",
+    "rule": {
+      "primary": "Agent submits { tokenId } for a Normie they hold. Validator queries /holders/{agent} and /agents/binding/{tokenId}; both must confirm ownership and a successful agent binding.",
+      "score_bonus": "If the agent has registered an agent.json via Adapter8004 (binding.bound === true && binding.agentId > 0), award full score."
+    },
+    "level_award": 2,
+    "score_award": 75
+  },
+  "risk": {
+    "max_requests_per_minute": 60,
+    "max_cache_ttl_seconds": 60,
+    "exposure_warnings": ["upstream-api-downtime", "canvas-state-staleness"]
+  }
+}

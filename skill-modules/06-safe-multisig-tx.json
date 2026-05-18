@@ -1,0 +1,84 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Safe (Gnosis) Multisig Transaction",
+  "version": "2.0.0",
+  "description": "Propose, co-sign, and execute a Safe v1.4.1 multisig transaction on Ethereum mainnet. Essential for any agent acting on behalf of a treasury or DAO.",
+  "category": "Governance",
+  "difficulty": "advanced",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [3],
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      {
+        "role": "safe_proxy",
+        "name": "GnosisSafeProxy v1.4.1",
+        "address": "0x*",
+        "comment": "Per-Safe proxy address — supplied by the agent's task context.",
+        "abi_fragments": [
+          { "type": "function", "name": "getTransactionHash",
+            "inputs": [
+              { "name": "to",             "type": "address" },
+              { "name": "value",          "type": "uint256" },
+              { "name": "data",           "type": "bytes"   },
+              { "name": "operation",      "type": "uint8"   },
+              { "name": "safeTxGas",      "type": "uint256" },
+              { "name": "baseGas",        "type": "uint256" },
+              { "name": "gasPrice",       "type": "uint256" },
+              { "name": "gasToken",       "type": "address" },
+              { "name": "refundReceiver", "type": "address" },
+              { "name": "_nonce",         "type": "uint256" }
+            ],
+            "outputs": [{ "name": "", "type": "bytes32" }],
+            "stateMutability": "view"
+          },
+          { "type": "function", "name": "execTransaction",
+            "inputs": [
+              { "name": "to",             "type": "address" },
+              { "name": "value",          "type": "uint256" },
+              { "name": "data",           "type": "bytes"   },
+              { "name": "operation",      "type": "uint8"   },
+              { "name": "safeTxGas",      "type": "uint256" },
+              { "name": "baseGas",        "type": "uint256" },
+              { "name": "gasPrice",       "type": "uint256" },
+              { "name": "gasToken",       "type": "address" },
+              { "name": "refundReceiver", "type": "address" },
+              { "name": "signatures",     "type": "bytes"   }
+            ],
+            "outputs": [{ "name": "success", "type": "bool" }],
+            "stateMutability": "payable"
+          }
+        ]
+      }
+    ],
+    "steps": [
+      { "id": "compute_hash", "action": "read_state",
+        "description": "Call safe.getTransactionHash(...) with the proposed SafeTx params." },
+      { "id": "sign_hash",    "action": "personal_sign_or_eip1271",
+        "description": "Each owner signs the safeTxHash. Concatenate signatures sorted by signer address ascending." },
+      { "id": "execute",      "action": "call", "target": "$SAFE", "function": "execTransaction",
+        "params": { "signatures": "$CONCAT_SIGS" } }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem"],
+    "snippet": "const safe = SAFE_ADDRESS;\nconst nonce = await client.readContract({ address: safe, abi: SAFE_ABI, functionName: 'nonce' });\nconst safeTxHash = await client.readContract({\n  address: safe, abi: SAFE_ABI, functionName: 'getTransactionHash',\n  args: [to, value, data, 0, 0n, 0n, 0n, ZERO, ZERO, nonce]\n});\n\n// Each owner signs the hash (sort signatures by signer address)\nconst sig = await owner.signMessage({ message: { raw: safeTxHash } });\nconst signatures = '0x' + sortedSignatures.map(s => s.slice(2)).join('');\n\nawait wallet.writeContract({\n  address: safe, abi: SAFE_ABI, functionName: 'execTransaction',\n  args: [to, value, data, 0, 0n, 0n, 0n, ZERO, ZERO, signatures]\n});"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "type": "on_chain_event",
+    "rule": {
+      "event_signature": "ExecutionSuccess(bytes32,uint256)",
+      "topic0": "0x442e715f626346e8c54381002da614f62bee8d27386535b2521ec8540898556e",
+      "tx_status": "success",
+      "comment": "Validator confirms a Safe ExecutionSuccess event was emitted in the provided tx, with the agent as one of the signers."
+    },
+    "level_award": 3,
+    "score_award": 85
+  },
+  "risk": {
+    "min_owners_required": 2,
+    "exposure_warnings": ["nonce-stale-signatures", "signature-ordering", "delegatecall-misuse"]
+  }
+}

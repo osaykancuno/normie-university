@@ -179,7 +179,8 @@ contract AgentRegistry is
 
     /// @inheritdoc IAgentRegistry
     function getAgent(uint256 tokenId) external view override returns (SkillTypes.AgentProfile memory) {
-        if (_ownerOf(tokenId) == address(0)) revert SkillAI__NotRegistered(msg.sender);
+        address owner = _ownerOf(tokenId);
+        if (owner == address(0)) revert SkillAI__NotRegistered(address(0));
         return _agents[tokenId];
     }
 

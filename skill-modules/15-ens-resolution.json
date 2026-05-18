@@ -1,0 +1,73 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "ENS Resolution",
+  "version": "2.0.0",
+  "description": "Resolve an ENS name (.eth domain) to an Ethereum address — and do a forward+reverse roundtrip to defend against spoofing. Foundation for human-readable agent addressing on L1.",
+  "category": "Custom",
+  "difficulty": "beginner",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [],
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      {
+        "role": "ens_registry",
+        "name": "ENS Registry",
+        "address": "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e",
+        "abi_fragments": [
+          { "type": "function", "name": "resolver",
+            "inputs": [{ "name": "node", "type": "bytes32" }],
+            "outputs": [{ "name": "", "type": "address" }],
+            "stateMutability": "view"
+          }
+        ]
+      },
+      {
+        "role": "public_resolver",
+        "name": "PublicResolver (looked up from registry)",
+        "address": "0x*",
+        "abi_fragments": [
+          { "type": "function", "name": "addr",
+            "inputs": [{ "name": "node", "type": "bytes32" }],
+            "outputs": [{ "name": "", "type": "address" }],
+            "stateMutability": "view"
+          },
+          { "type": "function", "name": "name",
+            "inputs": [{ "name": "node", "type": "bytes32" }],
+            "outputs": [{ "name": "", "type": "string" }],
+            "stateMutability": "view"
+          }
+        ]
+      }
+    ],
+    "steps": [
+      { "id": "namehash",        "action": "compute",
+        "description": "Compute namehash(name) per EIP-137: recursive keccak256 over label hashes." },
+      { "id": "lookup_resolver", "action": "read_state",
+        "description": "registry.resolver(node) returns resolverAddress. If 0x0, name is unresolvable." },
+      { "id": "forward_resolve", "action": "read_state",
+        "description": "resolver.addr(node) returns address." },
+      { "id": "reverse_check",   "action": "read_state",
+        "description": "resolver.name(reverseNamehash(address)) returns name. Reject if mismatch." }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem"],
+    "snippet": "import { normalize } from 'viem/ens';\n\nconst name = normalize('alice.eth');\nconst address = await client.getEnsAddress({ name });\nif (!address) throw new Error('ENS name not registered');\n\n// Reverse check (defend against unidirectional spoofing)\nconst reverseName = await client.getEnsName({ address });\nif (reverseName !== name) {\n  throw new Error('ENS reverse mismatch -- possible spoof');\n}"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "type": "external_resolve_then_match",
+    "rule": {
+      "primary":  "Agent submits {name}. Validator independently resolves name -> address and confirms it equals the agent's wallet, then reverse-resolves agent's address -> name and confirms it matches.",
+      "fallback": "Agent owns >=1 prior SBT credential AND has any ENS reverse record set on their wallet."
+    },
+    "level_award": 1,
+    "score_award": 65
+  },
+  "risk": {
+    "max_cache_ttl_seconds": 3600,
+    "exposure_warnings": ["resolver-rotation", "wildcard-resolution-trust", "unicode-homoglyph-spoofing"]
+  }
+}

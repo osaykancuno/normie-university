@@ -1,0 +1,85 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "x402 / EIP-3009 USDC Payment",
+  "version": "2.0.0",
+  "description": "Pay any HTTP service or smart contract in USDC using a single signed authorization (EIP-3009 transferWithAuthorization). The cornerstone of agent-native commerce: gasless, atomic, no pre-approval.",
+  "category": "DeFi",
+  "difficulty": "advanced",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [3],
+  "executable": {
+    "kind": "signed_message_then_relayed_call",
+    "contracts": [
+      {
+        "role": "usdc",
+        "name": "USDC",
+        "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        "abi_fragments": [
+          {
+            "type": "function", "name": "receiveWithAuthorization", "selector": "0xef55bec6",
+            "inputs": [
+              { "name": "from",        "type": "address" },
+              { "name": "to",          "type": "address" },
+              { "name": "value",       "type": "uint256" },
+              { "name": "validAfter",  "type": "uint256" },
+              { "name": "validBefore", "type": "uint256" },
+              { "name": "nonce",       "type": "bytes32" },
+              { "name": "v",           "type": "uint8"   },
+              { "name": "r",           "type": "bytes32" },
+              { "name": "s",           "type": "bytes32" }
+            ],
+            "outputs": [], "stateMutability": "nonpayable"
+          }
+        ]
+      }
+    ],
+    "steps": [
+      { "id": "fetch_402", "action": "http_get",
+        "description": "GET the paid resource. Server responds 402 with X-Payment-Required header (x402 spec)."
+      },
+      { "id": "sign_auth", "action": "sign_typed_data",
+        "params": {
+          "domain": { "name": "USD Coin", "version": "2", "chainId": 1, "verifyingContract": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" },
+          "types": {
+            "ReceiveWithAuthorization": [
+              { "name": "from",        "type": "address" },
+              { "name": "to",          "type": "address" },
+              { "name": "value",       "type": "uint256" },
+              { "name": "validAfter",  "type": "uint256" },
+              { "name": "validBefore", "type": "uint256" },
+              { "name": "nonce",       "type": "bytes32" }
+            ]
+          },
+          "primaryType": "ReceiveWithAuthorization",
+          "message": { "from": "$AGENT", "to": "$PAY_TO", "value": "$AMOUNT", "validAfter": "$NOW-60", "validBefore": "$NOW+300", "nonce": "$RANDOM_BYTES32" }
+        }
+      },
+      { "id": "retry_with_payment", "action": "http_post",
+        "description": "Re-issue the request with X-Payment: <base64(envelope)>. Server settles via receiveWithAuthorization."
+      }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem"],
+    "snippet": "// 1. GET 402\nconst quote = await fetch(url).then(r => r.json());\nconst accept = quote.accepts[0];\n\n// 2. Sign EIP-3009 auth\nconst nonce = ('0x' + Array.from(crypto.getRandomValues(new Uint8Array(32))).map(b => b.toString(16).padStart(2,'0')).join('')) as Hex;\nconst now = Math.floor(Date.now()/1000);\nconst signature = await wallet.signTypedData({\n  domain: { name: 'USD Coin', version: '2', chainId: 1, verifyingContract: USDC },\n  types: { ReceiveWithAuthorization: [/* fields */] },\n  primaryType: 'ReceiveWithAuthorization',\n  message: { from: agent, to: accept.payTo, value: BigInt(accept.maxAmountRequired),\n             validAfter: BigInt(now - 60), validBefore: BigInt(now + accept.maxTimeoutSeconds), nonce }\n});\n\n// 3. POST with X-PAYMENT\nconst payload = { x402Version: 1, scheme: 'exact', network: 'ethereum',\n                  payload: { signature: parseSignature(signature), authorization: {...} } };\nawait fetch(url, { method: 'POST', headers: { 'X-PAYMENT': btoa(JSON.stringify(payload)) } });"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "type": "on_chain_event",
+    "rule": {
+      "event_signature": "AuthorizationUsed(address,bytes32)",
+      "topic0": "0x98de503528ee59b575ef0c0a2576a82497bfc029a5685b209e9ec333479b10a5",
+      "tx_to": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "indexed_authorizer": "$AGENT",
+      "comment": "Validator checks USDC.AuthorizationUsed event was emitted with authorizer = agent."
+    },
+    "level_award": 3,
+    "score_award": 85
+  },
+  "risk": {
+    "max_validity_seconds": 600,
+    "max_value_usdc": 100,
+    "exposure_warnings": ["nonce-reuse", "expired-auth-replay-by-relayer", "phishing-recipient"]
+  }
+}

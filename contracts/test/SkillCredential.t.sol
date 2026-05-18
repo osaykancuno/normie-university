@@ -234,6 +234,93 @@ contract SkillCredentialTest is Test {
     }
 
     // ------------------------------------------------------------------
+    //                  LAZY MINT (EIP-712 attestation)
+    // ------------------------------------------------------------------
+
+    function _signAttestation(
+        address agent,
+        uint256 skillId,
+        uint8 level,
+        uint256 score,
+        uint256 deadline,
+        uint256 signerPk
+    ) internal view returns (bytes memory) {
+        bytes32 typeHash = keccak256(
+            "SkillAttestation(address agent,uint256 skillId,uint8 level,uint256 score,uint256 deadline)"
+        );
+        bytes32 structHash = keccak256(abi.encode(typeHash, agent, skillId, level, score, deadline));
+        bytes32 domainSeparator = keccak256(abi.encode(
+            keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+            keccak256(bytes("SKILLAI Credential")),
+            keccak256(bytes("1")),
+            block.chainid,
+            address(cred)
+        ));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPk, digest);
+        return abi.encodePacked(r, s, v);
+    }
+
+    function test_MintFromAttestation_HappyPath() public {
+        uint256 signerPk = 0xA77E574710A77E574710;
+        address signer = vm.addr(signerPk);
+        vm.prank(admin);
+        cred.grantAttestationSigner(signer);
+
+        uint256 deadline = block.timestamp + 1 hours;
+        bytes memory sig = _signAttestation(alice, 42, 2, 80, deadline, signerPk);
+
+        uint256 tokenId = cred.mintFromAttestation(alice, 42, 2, 80, deadline, sig);
+        assertEq(cred.ownerOf(tokenId), alice);
+        assertTrue(cred.hasSkill(alice, 42));
+
+        SkillTypes.CredentialData memory d = cred.getCredentialDetails(tokenId);
+        assertEq(d.skillId, 42);
+        assertEq(d.level, 2);
+        assertEq(d.score, 80);
+    }
+
+    function test_MintFromAttestation_RevertsOnInvalidSigner() public {
+        // Wrong key — has no ATTESTATION_SIGNER role
+        uint256 wrongPk = 0xDEADBEEF;
+        uint256 deadline = block.timestamp + 1 hours;
+        bytes memory sig = _signAttestation(alice, 42, 2, 80, deadline, wrongPk);
+
+        vm.expectRevert();
+        cred.mintFromAttestation(alice, 42, 2, 80, deadline, sig);
+    }
+
+    function test_MintFromAttestation_RevertsAfterDeadline() public {
+        uint256 signerPk = 0xA77E574710A77E574710;
+        vm.prank(admin);
+        cred.grantAttestationSigner(vm.addr(signerPk));
+
+        uint256 deadline = block.timestamp + 1 hours;
+        bytes memory sig = _signAttestation(alice, 42, 2, 80, deadline, signerPk);
+
+        vm.warp(deadline + 1);
+        vm.expectRevert();
+        cred.mintFromAttestation(alice, 42, 2, 80, deadline, sig);
+    }
+
+    function test_MintFromAttestation_AnyoneCanSubmit() public {
+        // Demonstrate that a relayer can submit the tx on behalf of the agent.
+        uint256 signerPk = 0xA77E574710A77E574710;
+        vm.prank(admin);
+        cred.grantAttestationSigner(vm.addr(signerPk));
+
+        uint256 deadline = block.timestamp + 1 hours;
+        bytes memory sig = _signAttestation(alice, 42, 2, 80, deadline, signerPk);
+
+        address relayer = address(0xBEEF);
+        vm.prank(relayer);
+        cred.mintFromAttestation(alice, 42, 2, 80, deadline, sig);
+
+        assertEq(cred.balanceOf(alice), 1, "credential mints to agent, not relayer");
+        assertEq(cred.balanceOf(relayer), 0);
+    }
+
+    // ------------------------------------------------------------------
     //                      FUZZ TESTING
     // ------------------------------------------------------------------
 

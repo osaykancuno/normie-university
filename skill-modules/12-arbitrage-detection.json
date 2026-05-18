@@ -1,0 +1,73 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Cross-DEX Atomic Arbitrage",
+  "version": "2.0.0",
+  "description": "Detect and execute profitable arbitrage between Uniswap V3, Sushiswap V2, and Curve on Ethereum mainnet. Gas-aware sizing, atomic flash-loan execution via Aave V3, self-rugging defenses.",
+  "category": "Trading",
+  "difficulty": "expert",
+  "chain": { "id": 1, "name": "Ethereum Mainnet" },
+  "prerequisites": [1, 7, 11],
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      {
+        "role": "flash_loan_provider",
+        "name": "Aave V3 Pool",
+        "address": "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2",
+        "abi_fragments": [
+          { "type": "function", "name": "flashLoanSimple",
+            "selector": "0x42b0b77c",
+            "inputs": [
+              { "name": "receiverAddress", "type": "address" },
+              { "name": "asset",           "type": "address" },
+              { "name": "amount",          "type": "uint256" },
+              { "name": "params",          "type": "bytes"   },
+              { "name": "referralCode",    "type": "uint16"  }
+            ],
+            "outputs": [], "stateMutability": "nonpayable"
+          }
+        ]
+      }
+    ],
+    "steps": [
+      { "id": "scan_prices",     "action": "read_state",
+        "description": "Read prices for the same pair on N DEXs each block; cache. price_dex_B / price_dex_A - 1." },
+      { "id": "compute_edge",    "action": "math",
+        "description": "edge = spread - fee_A - fee_B - gas_cost/notional. Reject if edge < 5 bps." },
+      { "id": "size_optimization","action": "math",
+        "description": "Optimal size minimises spread decay; numerically solve against the worse liquidity curve." },
+      { "id": "atomic_execute",  "action": "call",
+        "target": "$AAVE_POOL", "function": "flashLoanSimple",
+        "params": { "receiverAddress": "$ARB_EXECUTOR", "asset": "$ASSET", "amount": "$SIZE", "params": "$ENCODED_PATH", "referralCode": 0 },
+        "description": "Inside the flash loan callback: swap A→B on DEX1, swap B→A on DEX2, repay the flash + 0.05% fee, keep the spread." }
+    ]
+  },
+  "reference_implementation": {
+    "language": "typescript",
+    "deps": ["viem"],
+    "snippet": "// Off-chain price scanning\nconst priceUni  = await getUniV3Price(pool_uni, token0, token1);\nconst priceSushi = await getSushiPrice(pool_sushi, token0, token1);\nconst spread = priceSushi / priceUni - 1;\nconst edgeBps = spread * 10000 - feeUni - feeSushi - gasCostBps;\nif (edgeBps < 5) return; // not profitable\n\n// Atomic execution via flash loan (requires a deployed ArbExecutor contract\n// that implements IFlashLoanSimpleReceiver and routes through both DEXs).\nconst params = encodeAbiParameters([{type:'address[]'},{type:'uint24'}], [path, 3000]);\nawait wallet.writeContract({\n  address: AAVE_POOL, abi: POOL_ABI, functionName: 'flashLoanSimple',\n  args: [ARB_EXECUTOR, asset, size, params, 0]\n});"
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "type": "on_chain_event_pattern",
+    "rule": {
+      "must_contain_all": [
+        { "event_signature": "FlashLoan(address,address,address,uint256,uint8,uint256,uint16)",
+          "topic0": "0xefefaba5e921573100900a3ad9cf29f222d995fb3b6045797eaea7521bd8d6f0",
+          "comment": "Aave V3 flash loan was initiated." },
+        { "min_swap_events": 2,
+          "comment": "At least two Swap events across different DEX routers in the same tx." }
+      ],
+      "tx_status": "success",
+      "tx_from": "$AGENT"
+    },
+    "level_award": 3,
+    "score_award": 90
+  },
+  "risk": {
+    "min_edge_bps_after_fees": 5,
+    "max_position_pct_of_pool": 1,
+    "max_gas_gwei": 30,
+    "exposure_warnings": ["mev-frontrunning", "flash-loan-fee-spike", "router-revert-mid-loop"]
+  }
+}
