@@ -134,7 +134,11 @@
       "Bash(curl -s \"https://normie-university.vercel.app/api/normies/awakened-list?limit=5\")",
       "Bash(grep -oE \"NORMIES_API.{0,80}|api\\\\.normies\\\\.art/[a-z/_{}-]+|\\\\$\\\\{NORMIES_API\\\\}[^\\\\\"\\\\`'\\\\\\\\\\)]*\" app/src/lib/server/normies.ts app/src/app/api/normies/**/*.ts)",
       "Bash(grep -oE \"/[a-z][^\\\\\"'\\\\\\\\\\),\\\\\\\\s]*\")",
-      "Bash(grep -oE \"\\\\`[^\\\\`]*\\\\$\\\\{[^}]*\\\\}[^\\\\`]*\\\\`|/\\\\\\\\$\\\\\\\\{NORMIES_API\\\\\\\\}/[^\\\\`]+|/agents/[a-z/]+|/normie/[^\\\\`'\\\\\"]+|/history/[a-z/-]+|/holders/[^\\\\`]+\")"
+      "Bash(grep -oE \"\\\\`[^\\\\`]*\\\\$\\\\{[^}]*\\\\}[^\\\\`]*\\\\`|/\\\\\\\\$\\\\\\\\{NORMIES_API\\\\\\\\}/[^\\\\`]+|/agents/[a-z/]+|/normie/[^\\\\`'\\\\\"]+|/history/[a-z/-]+|/holders/[^\\\\`]+\")",
+      "Bash(curl -s \"https://normie-university.vercel.app/api/normies/agent/8362\")",
+      "Bash(curl -s \"https://api.normies.art/agents/binding/8362\")",
+      "Bash(curl -s \"https://api.normies.art/agents/info/8362\")",
+      "Bash(curl -s \"https://api.normies.art/agents/binding/4354\")"
     ]
   }
 }

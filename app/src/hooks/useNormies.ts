@@ -54,7 +54,16 @@ export type Persona = {
 
 export type PersonaResponse = {
   tokenId: string;
-  binding: { tokenId: string; agentId: string; bound: boolean; adapter: `0x${string}` } | null;
+  // Normalized by /api/normies/agent/[id]. `bound:true` means ERC-8004 agentId
+  // is bound to this Normie. agentId/adapter may be null when not yet awakened.
+  binding: {
+    bound: boolean;
+    tokenId: string;
+    agentId: string | null;
+    adapter: `0x${string}` | null;
+    standard?: number;
+    raw?: unknown;
+  } | null;
   persona: Persona;
   agentCard: Record<string, unknown> | null;
 };

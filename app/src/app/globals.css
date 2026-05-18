@@ -69,3 +69,22 @@ body {
 }
 
 .mono { font-family: var(--font-geist-mono), ui-monospace, monospace; }
+
+/* ===========================================================================
+   RainbowKit ConnectButton — force brand alignment.
+   The theme prop covers most things, but the inline ConnectButton uses its
+   own CSS-in-JS that bleeds purple defaults in some states. We tighten it.
+   =========================================================================== */
+[data-rk] button[aria-label*="Connect" i],
+[data-rk] button[aria-label*="connect" i],
+[data-rk] button.iekbcc0 {
+  border-radius: 0 !important;
+  font-family: var(--font-geist-mono), ui-monospace, monospace !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em !important;
+  border: 1px solid var(--line-strong) !important;
+}
+/* Connected state pill (chain badge + address) */
+[data-rk] [aria-label*="Account" i] > div {
+  border-radius: 0 !important;
+}

@@ -149,7 +149,7 @@ export default function NormieAgentProfilePage({
                 </p>
               )}
               <div className="rule" />
-              {binding?.bound && (
+              {binding?.bound && binding.agentId && (
                 <div>
                   <div className="mono text-[10px] uppercase tracking-wider text-ink-muted">
                     ERC-8004 agent id

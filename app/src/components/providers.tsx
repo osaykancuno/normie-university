@@ -5,19 +5,19 @@ import "@rainbow-me/rainbowkit/styles.css";
 import { useState, type ReactNode } from "react";
 import { WagmiProvider } from "wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
+import { RainbowKitProvider, lightTheme } from "@rainbow-me/rainbowkit";
 
 import { wagmiConfig } from "@/config/wagmi";
 
 /// Root client-side providers — wagmi, react-query, RainbowKit.
-/// Sits just beneath <body> in RootLayout so every descendant page can read
-/// wallet state.
+/// Theme palette aligned with the Normies-inspired NORMIE UNIVERSITY design:
+///   ink (charcoal) #48494b · paper (cream) #f5f4f0 · canvas #e3e5e4
+/// Squared corners + monospace mark match the rest of the UI.
 export function Providers({ children }: { children: ReactNode }) {
-  // Keep a single QueryClient across re-renders (React 19 strict mode safe)
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 30_000,     // 30s — contract data rarely churns faster
+        staleTime: 30_000,
         refetchOnWindowFocus: false,
       },
     },
@@ -27,10 +27,12 @@ export function Providers({ children }: { children: ReactNode }) {
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider
-          theme={darkTheme({
-            accentColor: "#7c3aed",        // violet-600
-            accentColorForeground: "white",
-            borderRadius: "medium",
+          theme={lightTheme({
+            accentColor: "#48494b",          // ink — charcoal
+            accentColorForeground: "#f5f4f0", // paper — cream
+            borderRadius: "none",            // squared, matches Normies aesthetic
+            fontStack: "system",
+            overlayBlur: "small",
           })}
           modalSize="compact"
         >
