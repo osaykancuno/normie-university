@@ -15,10 +15,10 @@ const IS_TESTNET = (ACTIVE_CHAIN.id as number) !== 1 && (ACTIVE_CHAIN.id as numb
 
 /// Tier 1 — always visible on desktop, also surfaced in mobile menu.
 const NAV_LINKS_PRIMARY = [
-  { href: "/preview",   label: "Pre-school" },
   { href: "/skills",    label: "Catalogue" },
-  { href: "/use-cases", label: "Use cases" },
   { href: "/agents",    label: "Agents" },
+  { href: "/use-cases", label: "Use cases" },
+  { href: "/dashboard", label: "Dashboard" },
 ];
 
 /// Tier 2 — only on larger desktops (lg+); on mobile they're in the menu.
@@ -28,7 +28,6 @@ const NAV_LINKS_SECONDARY = [
   { href: "/reputation",        label: "Leaderboard" },
   { href: "/community/normies", label: "Normies" },
   { href: "/developers",        label: "Developers" },
-  { href: "/dashboard",         label: "Dashboard" },
 ];
 
 const ALL_NAV = [...NAV_LINKS_PRIMARY, ...NAV_LINKS_SECONDARY];

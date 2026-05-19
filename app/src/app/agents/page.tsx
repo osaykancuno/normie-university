@@ -167,8 +167,8 @@ export default function AgentsDirectoryPage() {
         <h2 className="mono text-xs uppercase tracking-wider text-ink-muted">
           Featured awakened Normies
         </h2>
-        <Link href="/preview" className="mono text-xs text-ink underline hover:opacity-70">
-          → Pre-school: preview any Normie
+        <Link href="https://normies.art/lab" target="_blank" rel="noreferrer noopener" className="mono text-xs text-ink underline hover:opacity-70">
+          → Awaken your Normie at normies.art/lab
         </Link>
       </div>
       {filteredFeatured.length === 0 ? (

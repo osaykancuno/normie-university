@@ -240,7 +240,7 @@ export function normieAgentImageUrl(tokenId: string | number): string {
 }
 
 // ---------------------------------------------------------------------------
-// Canvas (live transformation state) — used by /preview, dashboard diff badge
+// Canvas (live transformation state) — used by agent profile + directory cards
 // ---------------------------------------------------------------------------
 
 export type CanvasDiff = {

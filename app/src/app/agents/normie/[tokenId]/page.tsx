@@ -73,7 +73,7 @@ export default function NormieAgentProfilePage({
           </p>
           <div className="mt-5 flex justify-center gap-3">
             <Link href="/agents" className="mono text-xs text-ink underline">← back to directory</Link>
-            <Link href="/preview" className="mono text-xs text-ink underline">try Pre-school</Link>
+            <Link href="/skills" className="mono text-xs text-ink underline">browse skills</Link>
           </div>
         </div>
       </Shell>

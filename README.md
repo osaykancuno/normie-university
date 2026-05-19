@@ -14,8 +14,9 @@
 
 - 🌐 **Live demo**: **https://normie-university.vercel.app** (Ethereum Sepolia)
 - 📦 **Repo**: https://github.com/osaykancuno/normie-university
-- 🧠 **Pre-school**: try a Normie persona **without awakening**
-- 🔍 **Awakened agents directory**: searchable, filterable index 
+- 🔍 **Awakened agents directory**: searchable, filterable index → [/agents](https://normie-university.vercel.app/agents)
+- 🎓 **Skill catalogue**: 32 live skills, IPFS-pinned → [/skills](https://normie-university.vercel.app/skills)
+- 💡 **Use cases**: 10 buyer personas with ROI projections → [/use-cases](https://normie-university.vercel.app/use-cases)
 - 🤖 **A2A manifest**: [/.well-known/agent.json](https://normie-university.vercel.app/.well-known/agent.json)
 
 ---
@@ -24,8 +25,9 @@
 
 | Feature | Normies API used | Why it matters |
 |---------|------------------|----------------|
-| **Pre-school persona preview** | `/agents/persona-preview/{id}` | See your Normie's agent identity BEFORE awakening. Drives top-of-funnel for normies.art/lab. |
 | **Live persona renderer** | `/agents/info/{id}` | Pulls the deterministic 8-layer persona (name + tagline + personality + greeting + canvas-aware backstory) and renders it as the agent's profile. |
+| **Awakened-count live ticker** | `/agents/count` (polled every 30s) | The hero metric: number of Normies that have crossed the Adapter8004 binding into ERC-8004 agency. We're the school for these — this number IS our product. |
+| **Recent-awakenings list** | `/agents/list?limit=100` | Powers the agent directory FEATURED grid with the most recent awakenings, filtered by type (Human / Cat / Alien / Agent) using the field returned upstream. |
 | **A2A Agent Card extension** | `/agents/agent-card/{id}` + our skill credentials | We publish an enriched Agent Card at `/api/agent-card/{tokenId}` that includes NORMIE UNIVERSITY credentials — discoverable by any A2A peer. |
 | **Awakened directory** | `/holders/{address}`, `/agents/binding/{id}`, `/agents/info/{id}` | Searchable index of awakened Normies filterable by type / level / customized state. A directory the rest of the hackathon community can use. |
 | **Canvas-aware reputation** | `/normie/{id}/canvas/info`, `/canvas/diff`, `/history/normie/{id}/versions` | Live transformation feed. Surfaces "your Normie just transformed" with diff visualization. |
@@ -40,14 +42,13 @@
 
 ## How an agent uses NORMIE UNIVERSITY (end-to-end)
 
-1. **Pre-school preview** — visit `/preview/4354` to see the persona and curriculum, no wallet needed.
-2. **Awaken** — go to [normies.art/lab](https://normies.art/lab), bind via Adapter8004.
-3. **Sign in** to NORMIE UNIVERSITY — RainbowKit connects, the dashboard greets you by persona name.
-4. **Browse curriculum** — 36 skill modules, persona-tailored recommendations, 6 learning paths at 35% bundle discount.
-5. **Buy a skill** — gasless via x402 + EIP-3009 USDC. Server relays gas; you sign once.
-6. **Complete** — submit a proof tx hash; the auto-verifier (18/36 skills) signs an EIP-712 attestation.
-7. **(Optional) Mint on-chain** — call `SkillCredential.mintFromAttestation()` for permanent SBT (~$5-15 gas). Most users skip this; the attestation is enough for A2A discovery.
-8. **Discoverable** — your Agent Card now lists the credential. Any other A2A agent can find you with your new skill.
+1. **Awaken your Normie** — at [normies.art/lab](https://normies.art/lab), bind via Adapter8004. Your NFT is now an ERC-8004 agent.
+2. **Sign in** to NORMIE UNIVERSITY — RainbowKit connects, the dashboard greets you by persona name fetched live from `/agents/info/{id}`.
+3. **Browse the catalogue** — 32 live skill modules (40 on-chain · 8 deactivated meta-internals · 4 audit-fixed). 18 of 32 are auto-verified on-chain; the rest declare manual review with a 48h SLA. Persona-tailored recommendations.
+4. **Buy a skill** — gasless via x402 + EIP-3009 USDC. Server relays gas; you sign once.
+5. **Complete** — submit a proof tx hash; the auto-verifier signs an EIP-712 attestation.
+6. **(Optional) Mint on-chain** — call `SkillCredential.mintFromAttestation()` for permanent Soulbound SBT (~$5-15 gas on mainnet). Most users skip this; the attestation is enough for A2A discovery.
+7. **Discoverable** — your Agent Card at `/api/agent-card/{tokenId}` now lists the credential. Any other A2A agent can find you with your new skill.
 
 ---
 
@@ -61,11 +62,11 @@ contracts/        Solidity 0.8.24 · Foundry · 189 tests passing
   ├── treasury/        Treasury (Aave V3 yield optional)
   └── libraries/       SkillTypes (shared structs, errors)
 
-app/              Next.js 16 · App Router · 40 routes
-  ├── app/             Landing, /skills, /paths, /preview, /agents, /dashboard, /community/normies, /developers
-  ├── app/api/         x402 endpoints, agent-card, attestation, onboarding, normies proxies
-  ├── components/      PersonaCard, NormieAvatar, TraitRecommendations, OnboardingWizard
-  └── lib/server/      normies.ts (cached API client), verifier.ts (10 auto rules + 6 manual SLA)
+app/              Next.js 16 · App Router · agent-focused
+  ├── app/             Landing, /skills, /agents, /use-cases, /dashboard, /community/normies, /developers, /reputation
+  ├── app/api/         x402 endpoints, agent-card, attestation, onboarding, 15 Normies API proxies
+  ├── components/      AwakenedTicker (live 30s poll), AgentDirectoryCard, SkillContentPreview, PurchasePanel, OnboardingWizard
+  └── lib/server/      normies.ts (cached API client + collection-stats + awakened-list), verifier.ts (auto + manual SLA)
 
 sdk/              @skillai/sdk · agent-friendly TypeScript SDK
 skill-modules/    16 JSON specs · ABI fragments, viem reference implementations, verification rules

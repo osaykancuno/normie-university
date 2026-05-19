@@ -160,7 +160,9 @@ export function useNormie(tokenId: string | number | undefined) {
 }
 
 // ===========================================================================
-// Pre-school: persona preview BEFORE awakening
+// Persona preview — used by directory cards + as fallback in agent profile
+// when the awakened endpoint fails. (The standalone /preview page was removed
+// when we focused the product on awakened agents only.)
 // ===========================================================================
 
 export type PersonaPreviewResponse = {
