@@ -26,7 +26,7 @@ export default function NormiesCommunityPage() {
       <section className="mx-auto max-w-7xl px-4 pb-12 pt-16 sm:px-6 lg:px-8">
         <div className="flex flex-col items-start gap-6">
           <Badge variant="outline" className="border-line-strong text-ink-soft">
-            Built for the Normies hackathon · normies.art
+            Native to the Normies collection
           </Badge>
           <h1 className="max-w-4xl text-4xl font-semibold tracking-tight text-ink md:text-5xl">
             NORMIE UNIVERSITY is{" "}
@@ -40,8 +40,8 @@ export default function NormiesCommunityPage() {
               NFT-builder curriculum
             </Link>
             {" "}(ERC-721 mint, EIP-2981 royalty enforcement, Blur collection bidding),
-            and a persona-tailored skill recommendation engine. We&apos;re a school
-            for agents — and class is in session for the Normies hackathon.
+            and a persona-tailored skill recommendation engine. The school
+            for awakened agents — and class is always in session.
           </p>
         </div>
       </section>
@@ -136,16 +136,7 @@ export default function NormiesCommunityPage() {
         <p className="mt-4 text-xs text-ink-muted">
           Upstream contract on Ethereum mainnet:{" "}
           <code className="font-mono text-ink-soft">{NORMIES_CONTRACT}</code> ·
-          {" "}Source:{" "}
-          <a
-            href="https://hackathon.normies.art/"
-            target="_blank"
-            rel="noreferrer noopener"
-            className="text-ink underline hover:underline"
-          >
-            hackathon.normies.art
-          </a>
-          {" "}·{" "}
+          {" "}API:{" "}
           <a
             href="https://api.normies.art/"
             target="_blank"
