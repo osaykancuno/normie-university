@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { isAddress } from "viem";
 import { useTotalTrackedAgents, useLeaderboard } from "@/hooks/useReputation";
-import { useAwakenedList, useCollectionStats } from "@/hooks/useNormies";
+import { useAwakenedList, useCollectionStats, useCanvasBatch } from "@/hooks/useNormies";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,23 +41,66 @@ export default function AgentsDirectoryPage() {
   const { items: awakened, refreshedAt: awakenedRefreshedAt } = useAwakenedList(100, 60_000);
   const collectionStats = useCollectionStats();
 
+  // Batched per-token canvas state. Lets us compute LEVEL + CUSTOMIZED
+  // filter counts against the awakened pool without 100 separate fetches.
+  // Server-cached via getPersonaPreview (shared with the card-level call).
+  const allIds = useMemo(() => awakened.map((a) => Number(a.tokenId)), [awakened]);
+  const canvasBatch = useCanvasBatch(allIds, 90_000);
+
+  // Index canvas data by tokenId for fast lookup during filter / count.
+  const canvasByToken = useMemo(() => {
+    const m = new Map<number, { level: number | null; customized: boolean | null }>();
+    for (const c of canvasBatch) m.set(Number(c.tokenId), { level: c.level, customized: c.customized });
+    return m;
+  }, [canvasBatch]);
+
   const filteredFeatured = useMemo(() => {
     if (awakened.length === 0) return FALLBACK_FEATURED;
-    // Pre-filter by type using the data the awakened-list endpoint already
-    // returns (no extra fetch needed). Level/canvas filters still apply at
-    // the card level.
-    const byType = typeF === "all"
-      ? awakened
-      : awakened.filter((a) => a.type === typeF);
-    // Cap to 24 displayed cards to keep the grid manageable.
-    return byType.slice(0, 24).map((a) => Number(a.tokenId));
-  }, [awakened, typeF]);
+    // Filter ALL THREE dimensions server-side using the batched canvas data.
+    // No more empty slots in the grid; pagination becomes meaningful.
+    const result = awakened.filter((a) => {
+      if (typeF !== "all" && a.type !== typeF) return false;
+      const c = canvasByToken.get(Number(a.tokenId));
+      // If canvas data hasn't loaded yet, show the card (avoid empty grid flash)
+      if (!c) return levelF === "all" && stateF === "all";
+      // Level filter
+      if (levelF !== "all" && c.level !== null) {
+        if (levelF === "1"  && c.level !== 1) return false;
+        if (levelF === "2"  && c.level !== 2) return false;
+        if (levelF === "3+" && c.level <  3 ) return false;
+      }
+      // Canvas state filter
+      if (stateF === "customized" && c.customized === false) return false;
+      if (stateF === "purist"     && c.customized === true)  return false;
+      return true;
+    });
+    return result.slice(0, 24).map((a) => Number(a.tokenId));
+  }, [awakened, typeF, levelF, stateF, canvasByToken]);
 
   const typeFilterCounts = useMemo(() => {
     const counts: Record<string, number> = { all: awakened.length };
     for (const a of awakened) counts[a.type] = (counts[a.type] ?? 0) + 1;
     return counts;
   }, [awakened]);
+
+  const levelFilterCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: canvasBatch.length, "1": 0, "2": 0, "3+": 0 };
+    for (const c of canvasBatch) {
+      if (c.level === 1) counts["1"]++;
+      else if (c.level === 2) counts["2"]++;
+      else if (typeof c.level === "number" && c.level >= 3) counts["3+"]++;
+    }
+    return counts;
+  }, [canvasBatch]);
+
+  const stateFilterCounts = useMemo(() => {
+    let custom = 0, purist = 0;
+    for (const c of canvasBatch) {
+      if (c.customized === true) custom++;
+      else if (c.customized === false) purist++;
+    }
+    return { all: canvasBatch.length, customized: custom, purist };
+  }, [canvasBatch]);
 
   const onLookup = (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,19 +201,31 @@ export default function AgentsDirectoryPage() {
         </FilterGroup>
         <Divider />
         <FilterGroup label="Level">
-          {(["all", "1", "2", "3+"] as LevelFilter[]).map((l) => (
-            <Pill key={l} active={levelF === l} onClick={() => setLevelF(l)}>
-              {l === "all" ? "all" : `lvl ${l}`}
-            </Pill>
-          ))}
+          {(["all", "1", "2", "3+"] as LevelFilter[]).map((l) => {
+            const c = levelFilterCounts[l] ?? 0;
+            return (
+              <Pill key={l} active={levelF === l} onClick={() => setLevelF(l)}>
+                {l === "all" ? "all" : `lvl ${l}`}
+                {canvasBatch.length > 0 && (
+                  <span className="ml-1 text-[10px] text-ink-faint">{c}</span>
+                )}
+              </Pill>
+            );
+          })}
         </FilterGroup>
         <Divider />
         <FilterGroup label="Canvas">
-          {(["all", "customized", "purist"] as StateFilter[]).map((s) => (
-            <Pill key={s} active={stateF === s} onClick={() => setStateF(s)}>
-              {s}
-            </Pill>
-          ))}
+          {(["all", "customized", "purist"] as StateFilter[]).map((s) => {
+            const c = stateFilterCounts[s] ?? 0;
+            return (
+              <Pill key={s} active={stateF === s} onClick={() => setStateF(s)}>
+                {s}
+                {canvasBatch.length > 0 && (
+                  <span className="ml-1 text-[10px] text-ink-faint">{c}</span>
+                )}
+              </Pill>
+            );
+          })}
         </FilterGroup>
       </div>
 

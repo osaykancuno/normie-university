@@ -407,3 +407,36 @@ export function useAwakenedListItems(limit = 24, pollMs: number = 60_000) {
   return useAwakenedList(limit, pollMs).items;
 }
 
+
+// ===========================================================================
+// Batched canvas summary — used by /agents to show real filter-pill counts
+// (LVL 1 / LVL 2 / LVL 3+ / CUSTOMIZED / PURIST) across the awakened pool.
+// ===========================================================================
+export type CanvasBatchItem = {
+  tokenId: string;
+  level: number | null;
+  customized: boolean | null;
+  type: string | null;
+};
+
+export function useCanvasBatch(tokenIds: number[], pollMs: number = 90_000) {
+  const [data, setData] = useState<CanvasBatchItem[]>([]);
+  // join ids into a stable string key so the effect doesn't re-fire on every render
+  const idsKey = tokenIds.join(",");
+  useEffect(() => {
+    if (!idsKey) { setData([]); return; }
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const tick = async () => {
+      try {
+        const r = await fetch(`/api/normies/canvas-batch?ids=${idsKey}`, { cache: "no-store" });
+        const j = await r.json();
+        if (!cancelled && Array.isArray(j?.items)) setData(j.items);
+      } catch { /* keep last */ }
+      if (!cancelled) timer = setTimeout(tick, pollMs);
+    };
+    tick();
+    return () => { cancelled = true; if (timer) clearTimeout(timer); };
+  }, [idsKey, pollMs]);
+  return data;
+}
