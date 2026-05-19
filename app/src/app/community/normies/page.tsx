@@ -36,12 +36,12 @@ export default function NormiesCommunityPage() {
           </h1>
           <p className="max-w-3xl text-lg leading-relaxed text-ink-soft">
             Hold a Normie? Your agent gets a pixel-art identity, a dedicated{" "}
-            <Link href="/paths/6" className="text-ink underline hover:underline">
-              Normies Builder Path
+            <Link href="/skills" className="text-ink underline hover:underline">
+              NFT-builder curriculum
             </Link>
-            , and a curated skill teaching you to read the entire on-chain
-            collection programmatically. We&apos;re a school for agents — and
-            class is in session for the Normies hackathon.
+            {" "}(ERC-721 mint, EIP-2981 royalty enforcement, Blur collection bidding),
+            and a persona-tailored skill recommendation engine. We&apos;re a school
+            for agents — and class is in session for the Normies hackathon.
           </p>
         </div>
       </section>
@@ -81,8 +81,8 @@ export default function NormiesCommunityPage() {
             {!address ? (
               <ConnectButton />
             ) : (
-              <Link href="/paths/6">
-                <Button>Open the Normies Builder Path →</Button>
+              <Link href="/skills">
+                <Button>Browse the catalogue →</Button>
               </Link>
             )}
           </CardContent>
@@ -98,8 +98,8 @@ export default function NormiesCommunityPage() {
               body: "If your wallet holds a Normie, your NORMIE UNIVERSITY agent profile shows its 40×40 SVG as avatar — pulled live from the official Normies API. Your agent gets the look of the community.",
             },
             {
-              title: "Normies Builder Path",
-              body: "A 3-skill curriculum bundle teaching ERC-721 mint, EIP-2981 royalty enforcement, and full Normies API integration. Bundle discount: 30% off vs buying individually.",
+              title: "NFT-builder curriculum",
+              body: "Three concrete skills for any agent acting on a collection: ERC-721 mint (#9), EIP-2981 royalty enforcement (#10), and Blur collection floor-bidding (#25). Persona-tailored picks surface higher for Normie holders.",
             },
             {
               title: "Production-grade API client",

@@ -3,12 +3,12 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { usePersonaOf, type Persona } from "@/hooks/useNormies";
-import { DEMO_SKILLS, DEMO_PATHS } from "@/lib/demo-data";
+import { DEMO_SKILLS } from "@/lib/demo-data";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
 type Recommendation = {
-  kind: "skill" | "path";
+  kind: "skill";
   id: bigint;
   reason: string;
 };
@@ -17,6 +17,7 @@ type Recommendation = {
 /// identity (type + traits + canvas state + level + customization) rather
 /// than from raw trait strings. The recommendations explicitly cite WHY in
 /// language that mirrors the Normie's persona.
+/// Only references ACTIVE skill IDs (path bundles hidden during testnet).
 function recommendFromPersona(p: Persona): Recommendation[] {
   const recs: Recommendation[] = [];
   const type = p.type.toLowerCase();
@@ -26,18 +27,18 @@ function recommendFromPersona(p: Persona): Recommendation[] {
 
   // ─── Type-driven primary recommendation ───────────────────────────────
   if (type === "agent") {
-    recs.push({ kind: "path", id: 3n, reason: `As an Agent type, you're built for autonomous trading — this path is your home.` });
-    recs.push({ kind: "path", id: 5n, reason: "Cross-chain mastery is table stakes for agent commerce." });
+    recs.push({ kind: "skill", id: 33n, reason: `As an Agent type, you're built for autonomous flows — ERC-7702 delegation is your foundation.` });
+    recs.push({ kind: "skill", id: 26n, reason: "Cross-chain mastery is table stakes for agent commerce." });
   } else if (type === "alien") {
     recs.push({ kind: "skill", id: 14n, reason: "Alien intelligence pairs perfectly with zero-knowledge cryptography." });
-    recs.push({ kind: "path", id: 5n, reason: "Operate across every chain like a true alien — multi-planet citizen." });
+    recs.push({ kind: "skill", id: 26n, reason: "Operate across every chain like a true alien — multi-planet citizen." });
   } else if (type === "cat") {
-    recs.push({ kind: "skill", id: 7n, reason: "Cats hunt silently. MEV protection is the art of being unseen on-chain." });
-    recs.push({ kind: "path", id: 1n, reason: "DeFi Fundamentals first — even hunters need their territory mapped." });
+    recs.push({ kind: "skill", id: 19n, reason: "Cats hunt silently. Flashbots anti-MEV is the art of being unseen on-chain." });
+    recs.push({ kind: "skill", id: 2n,  reason: "DeFi fundamentals first — even hunters need their territory mapped (start with Aave V3)." });
   } else {
     // Human (and unknown)
-    recs.push({ kind: "path", id: 1n, reason: `${p.name}, DeFi Fundamentals is the classical curriculum for your type.` });
-    recs.push({ kind: "path", id: 2n, reason: "Claim your agent identity — this trio gets you A2A-ready." });
+    recs.push({ kind: "skill", id: 2n,  reason: `${p.name}, Aave V3 supply is the classical first lesson for your type.` });
+    recs.push({ kind: "skill", id: 1n,  reason: "Uniswap V3 swaps — every agent needs a way in and out of positions." });
   }
 
   // ─── Tagline-driven flavor ─────────────────────────────────────────────
@@ -48,10 +49,10 @@ function recommendFromPersona(p: Persona): Recommendation[] {
     recs.push({ kind: "skill", id: 12n, reason: `"${p.tagline}" — atomic arbitrage is your craft.` });
   }
   if (tagline.includes("guardian") || tagline.includes("protector")) {
-    recs.push({ kind: "skill", id: 6n, reason: `"${p.tagline}" — Safe multisigs were built for guardians.` });
+    recs.push({ kind: "skill", id: 6n,  reason: `"${p.tagline}" — Safe multisigs were built for guardians.` });
   }
   if (tagline.includes("explorer") || tagline.includes("wanderer") || tagline.includes("nomad")) {
-    recs.push({ kind: "path", id: 5n, reason: `"${p.tagline}" — cross-chain ops are your medium.` });
+    recs.push({ kind: "skill", id: 26n, reason: `"${p.tagline}" — Across cross-chain bridging is your medium.` });
   }
 
   // ─── Canvas-state recommendations ──────────────────────────────────────
@@ -64,9 +65,9 @@ function recommendFromPersona(p: Persona): Recommendation[] {
   }
   if (level >= 2) {
     recs.push({
-      kind: "path",
-      id: 3n,
-      reason: `Level ${level} agent — advanced trading is within reach.`,
+      kind: "skill",
+      id: 21n,
+      reason: `Level ${level} agent — UniswapX intent-based execution is within reach.`,
     });
   }
   if (level >= 3) {
@@ -77,8 +78,10 @@ function recommendFromPersona(p: Persona): Recommendation[] {
     });
   }
 
-  // Always include the Normies Builder Path
-  recs.push({ kind: "path", id: 6n, reason: `Native to your collection — Normies Builder Path teaches you to read your own kind.` });
+  // Always include the canonical NFT-builder skills for Normie holders
+  recs.push({ kind: "skill", id: 9n,  reason: `Native to your collection — ERC-721 mint primitive, the foundation of any NFT op.` });
+  recs.push({ kind: "skill", id: 25n, reason: `Blur collection-bidding — sweep your own kind, set the floor.` });
+  recs.push({ kind: "skill", id: 10n, reason: `EIP-2981 royalty enforcement — protect the artists who minted your kind.` });
 
   // Dedup, top 5
   const seen = new Set<string>();
@@ -123,23 +126,17 @@ export function PersonaCurriculum({ address }: { address: `0x${string}` | undefi
 
         <div className="space-y-2">
           {recs.map((r) => {
-            const item = r.kind === "skill"
-              ? DEMO_SKILLS.find((s) => s.skillId === r.id)
-              : DEMO_PATHS.find((pp) => pp.pathId === r.id);
+            const item = DEMO_SKILLS.find((s) => s.skillId === r.id);
             if (!item) return null;
-            const href = r.kind === "skill" ? `/skills/${r.id}` : `/paths/${r.id}`;
-            const label = r.kind === "skill" ? "Skill" : "Path";
             return (
               <Link
-                key={`${r.kind}-${r.id}`}
-                href={href}
+                key={`skill-${r.id}`}
+                href={`/skills/${r.id}`}
                 className="block rounded-lg border border-line bg-surface/60 p-3 transition-colors hover:border-line-strong"
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <Badge variant={r.kind === "path" ? "default" : "outline"}>
-                      {label}
-                    </Badge>
+                    <Badge variant="outline">Skill</Badge>
                     <span className="text-sm font-medium text-ink">{item.name}</span>
                   </div>
                   <span className="text-xs text-ink-muted">→</span>
