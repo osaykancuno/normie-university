@@ -9,7 +9,7 @@
 /// GET /api/normies/canvas-batch?ids=4354,8362,9999
 /// → { items: [{ tokenId, level, customized, type }] }
 
-import { getPersonaPreview } from "@/lib/server/normies";
+import { getNormieCanvasInfo, getPersonaPreview } from "@/lib/server/normies";
 
 export const revalidate = 60;
 
@@ -29,13 +29,18 @@ export async function GET(req: Request) {
   const items = await Promise.all(
     ids.map(async (id) => {
       try {
-        // getPersonaPreview returns the flat PersonaInfo (not wrapped)
-        const p = await getPersonaPreview(id);
+        // /normie/{id}/canvas/info is the slimmest authoritative source for
+        // level + customized (it works for every minted token, including
+        // not-yet-awakened ones). Persona-preview gives us 'type' alongside.
+        const [canvas, persona] = await Promise.all([
+          getNormieCanvasInfo(id),
+          getPersonaPreview(id),
+        ]);
         return {
           tokenId: id,
-          level:      p?.canvas?.level ?? null,
-          customized: p?.canvas?.customized ?? null,
-          type:       p?.type ?? null,
+          level:      canvas?.level ?? null,
+          customized: canvas?.customized ?? null,
+          type:       persona?.type ?? null,
         };
       } catch {
         return { tokenId: id, level: null, customized: null, type: null };
