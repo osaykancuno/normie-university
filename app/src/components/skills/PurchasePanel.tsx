@@ -159,12 +159,23 @@ export function PurchasePanel({ skill }: { skill: Skill }) {
   return (
     <div className="space-y-4 rounded-none border border-line bg-surface p-5">
       {IS_TESTNET && (
-        <div className="border border-[color:var(--accent-warn)] bg-paper p-2.5 text-[11px] leading-relaxed text-ink-soft">
-          <span className="mono uppercase tracking-wider text-[color:var(--accent-warn)]">
-            ⚠ Testnet purchase
-          </span>{" "}
-          — pays in test USDC from the Circle faucet (no real value). The
-          credential mints on Sepolia and is valid for demo only.
+        <div className="space-y-2 border border-[color:var(--accent-warn)] bg-paper p-3 text-[11px] leading-relaxed text-ink-soft">
+          <div>
+            <span className="mono uppercase tracking-wider font-semibold text-[color:var(--accent-warn)]">
+              Demo build · purchases disabled
+            </span>
+          </div>
+          <p>
+            We&apos;re running on Ethereum {ACTIVE_CHAIN.name}. Wallet
+            connection works (read on-chain, view your Normies, sign messages),
+            but purchase transactions are intentionally disabled to prevent
+            anyone from spending real or test funds on an unaudited build.
+          </p>
+          <p className="text-ink-muted">
+            Mainnet release will activate purchase with audited contracts and a
+            multisig admin. Until then, you can browse, preview, and verify
+            every skill module — and your wallet stays untouched.
+          </p>
         </div>
       )}
       {/* Tabs */}
@@ -185,10 +196,12 @@ export function PurchasePanel({ skill }: { skill: Skill }) {
         <Button
           className="w-full"
           size="lg"
-          disabled={isEthPending || ethWait.isLoading || !skill.isActive}
+          disabled={IS_TESTNET || isEthPending || ethWait.isLoading || !skill.isActive}
           onClick={() => purchaseSkill(skill.skillId, skill.priceInWei)}
         >
-          {isEthPending || ethWait.isLoading
+          {IS_TESTNET
+            ? "Purchase disabled on testnet"
+            : isEthPending || ethWait.isLoading
             ? "Purchasing…"
             : `Purchase for ${formatEth(skill.priceInWei)} ETH`}
         </Button>
@@ -203,13 +216,15 @@ export function PurchasePanel({ skill }: { skill: Skill }) {
             <Button
               className="w-full"
               size="lg"
-              disabled={isApprovePending || approveWait.isLoading}
+              disabled={IS_TESTNET || isApprovePending || approveWait.isLoading}
               onClick={async () => {
                 await approveUsdc(maxUint256);
                 await refetchAllowance();
               }}
             >
-              {isApprovePending || approveWait.isLoading
+              {IS_TESTNET
+                ? "Approval disabled on testnet"
+                : isApprovePending || approveWait.isLoading
                 ? "Approving USDC…"
                 : "Approve USDC"}
             </Button>
@@ -218,6 +233,7 @@ export function PurchasePanel({ skill }: { skill: Skill }) {
               className="w-full"
               size="lg"
               disabled={
+                IS_TESTNET ||
                 isUsdcPending ||
                 usdcWait.isLoading ||
                 !skill.isActive ||
@@ -225,7 +241,9 @@ export function PurchasePanel({ skill }: { skill: Skill }) {
               }
               onClick={() => purchaseSkillWithUsdc(skill.skillId)}
             >
-              {insufficientUsdc
+              {IS_TESTNET
+                ? "Purchase disabled on testnet"
+                : insufficientUsdc
                 ? "Insufficient USDC"
                 : isUsdcPending || usdcWait.isLoading
                 ? "Purchasing…"
