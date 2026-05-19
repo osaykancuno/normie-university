@@ -367,15 +367,30 @@ export type AwakenedAgentSummary = {
   registeredAt: string;
 };
 
+/// Upstream /agents/list caps at 100 results per call but supports
+/// ?offset=N. To return more, we page through and concatenate in order.
+/// Cached 60s — same as the awakened ticker so the directory and the
+/// hero number stay in sync.
 export async function getAwakenedList(limit = 24): Promise<AwakenedAgentSummary[]> {
   return cachedFetch(`awakened-list:${limit}`, 60_000, async () => {
+    const PAGE = 100;
+    const want = Math.max(1, Math.min(limit, 1000)); // hard cap at 1000 to bound load
     try {
-      const res = await fetch(`${NORMIES_API}/agents/list?limit=${limit}`, {
-        headers: { accept: "application/json" },
-      });
-      if (!res.ok) return [];
-      const j = await res.json();
-      return (j.items ?? []) as AwakenedAgentSummary[];
+      const pages: AwakenedAgentSummary[][] = [];
+      for (let offset = 0; offset < want; offset += PAGE) {
+        const pageSize = Math.min(PAGE, want - offset);
+        const res = await fetch(
+          `${NORMIES_API}/agents/list?limit=${pageSize}&offset=${offset}`,
+          { headers: { accept: "application/json" } }
+        );
+        if (!res.ok) break;
+        const j = await res.json();
+        const items = (j.items ?? []) as AwakenedAgentSummary[];
+        if (items.length === 0) break;
+        pages.push(items);
+        if (items.length < pageSize) break; // upstream exhausted
+      }
+      return pages.flat();
     } catch { return []; }
   });
 }
