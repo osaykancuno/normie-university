@@ -359,15 +359,51 @@ export type AwakenedAgentSummary = {
   type: string;
 };
 
-export function useAwakenedList(limit = 24) {
+/// Polls the awakened-agents list. Default 60s — fast enough that newly
+/// awakened Normies show up while a visitor browses the directory. Pauses
+/// when the tab is hidden, refreshes on visibility return.
+export function useAwakenedList(limit = 24, pollMs: number = 60_000) {
   const [data, setData] = useState<AwakenedAgentSummary[]>([]);
+  const [refreshedAt, setRefreshedAt] = useState<number | null>(null);
+
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/normies/awakened-list?limit=${limit}`)
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled && Array.isArray(d?.items)) setData(d.items); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [limit]);
-  return data;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const tick = async () => {
+      try {
+        const r = await fetch(`/api/normies/awakened-list?limit=${limit}`, { cache: "no-store" });
+        const d = await r.json();
+        if (!cancelled && Array.isArray(d?.items)) {
+          setData(d.items);
+          setRefreshedAt(Date.now());
+        }
+      } catch { /* keep last data */ }
+      if (!cancelled) timer = setTimeout(tick, pollMs);
+    };
+    tick();
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible" && !cancelled) {
+        if (timer) clearTimeout(timer);
+        tick();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [limit, pollMs]);
+
+  return { items: data, refreshedAt };
 }
+
+/// Legacy alias — some callers destructure the array directly. New code
+/// should use the object form for the refreshedAt timestamp.
+export function useAwakenedListItems(limit = 24, pollMs: number = 60_000) {
+  return useAwakenedList(limit, pollMs).items;
+}
+

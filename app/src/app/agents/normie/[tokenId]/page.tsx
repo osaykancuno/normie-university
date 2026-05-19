@@ -296,7 +296,7 @@ export default function NormieAgentProfilePage({
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Link href="/skills"><Button>Browse curriculum →</Button></Link>
-              <Link href="/paths"><Button variant="outline">Learning paths</Button></Link>
+              <Link href="/use-cases"><Button variant="outline">Use cases</Button></Link>
             </div>
           </div>
         </main>

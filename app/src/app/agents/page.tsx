@@ -35,11 +35,10 @@ export default function AgentsDirectoryPage() {
   const [lbAddrs, lbScores] = (lb as [readonly `0x${string}`[], readonly bigint[]] | undefined) ?? [[], []];
 
   // Live: pull the most recent awakened Normies from the Normies API.
-  // We fetch a wide pool (100) and filter by type SERVER-SIDE using the
-  // type field already present in /agents/list. Without this, filtering by
-  // 'Agent' / 'Cat' / 'Alien' would show 0 results because the most recent
-  // dozen awakenings are typically all Human.
-  const awakened = useAwakenedList(100);
+  // We fetch a wide pool (200) so type-filtering by Cat / Alien / Agent has
+  // enough sample to show real entries (most recent dozen are typically all
+  // Human). Auto-refreshes every 60s and on tab-visibility change.
+  const { items: awakened, refreshedAt: awakenedRefreshedAt } = useAwakenedList(200, 60_000);
   const collectionStats = useCollectionStats();
 
   const filteredFeatured = useMemo(() => {
@@ -107,10 +106,22 @@ export default function AgentsDirectoryPage() {
               )}.
             </>
           )}
-          {totalTracked !== undefined && (
-            <> NORMIE UNIVERSITY tracks <span className="mono">{(totalTracked as bigint).toString()}</span> ranked agents.</>
-          )}
         </p>
+        <div className="mt-2 flex items-center gap-2 text-[11px] mono text-ink-faint">
+          <span className="relative inline-flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[color:var(--accent-ok)] opacity-60" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[color:var(--accent-ok)]" />
+          </span>
+          <span>
+            Showing the latest {awakened.length} awakenings · refreshes every 60s
+            {awakenedRefreshedAt && (
+              <> · last sync {new Date(awakenedRefreshedAt).toLocaleTimeString()}</>
+            )}
+            {totalTracked !== undefined && (totalTracked as bigint) > 0n && (
+              <> · NORMIE UNIVERSITY tracks {(totalTracked as bigint).toString()} ranked agents</>
+            )}
+          </span>
+        </div>
       </div>
 
       {/* Search bar */}
