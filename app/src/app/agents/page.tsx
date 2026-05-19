@@ -38,7 +38,7 @@ export default function AgentsDirectoryPage() {
   // We fetch a wide pool (200) so type-filtering by Cat / Alien / Agent has
   // enough sample to show real entries (most recent dozen are typically all
   // Human). Auto-refreshes every 60s and on tab-visibility change.
-  const { items: awakened, refreshedAt: awakenedRefreshedAt } = useAwakenedList(200, 60_000);
+  const { items: awakened, refreshedAt: awakenedRefreshedAt } = useAwakenedList(100, 60_000);
   const collectionStats = useCollectionStats();
 
   const filteredFeatured = useMemo(() => {
@@ -113,12 +113,13 @@ export default function AgentsDirectoryPage() {
             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[color:var(--accent-ok)]" />
           </span>
           <span>
-            Showing the latest {awakened.length} awakenings · refreshes every 60s
+            Showing the latest {awakened.length} awakenings
+            {collectionStats && (
+              <> of {collectionStats.awakenedCount.toLocaleString()} total</>
+            )}
+            {" "}· refreshes every 60s
             {awakenedRefreshedAt && (
               <> · last sync {new Date(awakenedRefreshedAt).toLocaleTimeString()}</>
-            )}
-            {totalTracked !== undefined && (totalTracked as bigint) > 0n && (
-              <> · NORMIE UNIVERSITY tracks {(totalTracked as bigint).toString()} ranked agents</>
             )}
           </span>
         </div>

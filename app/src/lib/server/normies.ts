@@ -367,30 +367,23 @@ export type AwakenedAgentSummary = {
   registeredAt: string;
 };
 
-/// Upstream /agents/list caps at 100 results per call but supports
-/// ?offset=N. To return more, we page through and concatenate in order.
-/// Cached 60s — same as the awakened ticker so the directory and the
-/// hero number stay in sync.
+/// Upstream /agents/list returns at most 100 items per call. The `?offset`
+/// query param is documented but is currently a no-op upstream (returns the
+/// same 100-most-recent rows regardless). So we make a single call capped
+/// at 100, and the UI is explicit that this is a 'latest 100' window of
+/// the live awakened pool. The HERO number (total awakened) comes from
+/// /agents/count separately via getCollectionStats() — that one is the
+/// real ever-growing count.
 export async function getAwakenedList(limit = 24): Promise<AwakenedAgentSummary[]> {
-  return cachedFetch(`awakened-list:${limit}`, 60_000, async () => {
-    const PAGE = 100;
-    const want = Math.max(1, Math.min(limit, 1000)); // hard cap at 1000 to bound load
+  const capped = Math.max(1, Math.min(limit, 100));
+  return cachedFetch(`awakened-list:${capped}`, 60_000, async () => {
     try {
-      const pages: AwakenedAgentSummary[][] = [];
-      for (let offset = 0; offset < want; offset += PAGE) {
-        const pageSize = Math.min(PAGE, want - offset);
-        const res = await fetch(
-          `${NORMIES_API}/agents/list?limit=${pageSize}&offset=${offset}`,
-          { headers: { accept: "application/json" } }
-        );
-        if (!res.ok) break;
-        const j = await res.json();
-        const items = (j.items ?? []) as AwakenedAgentSummary[];
-        if (items.length === 0) break;
-        pages.push(items);
-        if (items.length < pageSize) break; // upstream exhausted
-      }
-      return pages.flat();
+      const res = await fetch(`${NORMIES_API}/agents/list?limit=${capped}`, {
+        headers: { accept: "application/json" },
+      });
+      if (!res.ok) return [];
+      const j = await res.json();
+      return (j.items ?? []) as AwakenedAgentSummary[];
     } catch { return []; }
   });
 }
