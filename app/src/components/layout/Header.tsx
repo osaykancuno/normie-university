@@ -8,7 +8,9 @@ import { useAccount } from "wagmi";
 import { useIsCreator } from "@/hooks/useSkillRegistry";
 import { useDemoMode } from "@/hooks/useSkills";
 import { ACTIVE_CHAIN } from "@/config/chains";
+import { IS_COMING_SOON } from "@/config/launch";
 import { AwakenedTicker } from "@/components/layout/AwakenedTicker";
+import { ComingSoonButton } from "@/components/layout/ComingSoonButton";
 import { cn } from "@/lib/utils";
 
 const IS_TESTNET = (ACTIVE_CHAIN.id as number) !== 1 && (ACTIVE_CHAIN.id as number) !== 8453;
@@ -41,15 +43,15 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-paper/90 backdrop-blur">
-      {/* Demo / testnet ribbon — short on mobile, long on desktop */}
-      {IS_TESTNET && (
+      {/* Preview ribbon — makes it unmistakable the product isn't live yet */}
+      {(IS_TESTNET || IS_COMING_SOON) && (
         <div className="border-b border-line bg-canvas">
           <div className="mx-auto flex max-w-7xl items-center justify-center gap-2 px-3 py-1 text-[11px] sm:px-6 lg:px-8">
             <span className="inline-block h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-[color:var(--accent-warn)]" />
             <span className="mono truncate uppercase tracking-wider text-ink-soft">
-              <span className="sm:hidden">Sepolia testnet · test USDC only</span>
+              <span className="sm:hidden">Public preview · launching soon</span>
               <span className="hidden sm:inline">
-                Demo on Ethereum {ACTIVE_CHAIN.name} — test USDC only, no real funds at risk
+                Public preview — wallet connect &amp; skill purchases launch with the mainnet release. Browsing is free, no wallet needed.
               </span>
             </span>
           </div>
@@ -66,12 +68,12 @@ export function Header() {
             <span className="sm:hidden">NORMIE U.</span>
             <span className="hidden sm:inline">NORMIE UNIVERSITY</span>
           </span>
-          {IS_TESTNET && (
+          {(IS_COMING_SOON || IS_TESTNET) && (
             <span className="ml-1 hidden border border-[color:var(--accent-warn)] bg-paper px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[color:var(--accent-warn)] mono md:inline-block">
-              testnet
+              preview
             </span>
           )}
-          {demo && !IS_TESTNET && (
+          {demo && !IS_TESTNET && !IS_COMING_SOON && (
             <span className="ml-1 hidden border border-line bg-surface-2 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink-soft mono md:inline-block">
               demo
             </span>
@@ -116,14 +118,19 @@ export function Header() {
           </Link>
         )}
 
-        {/* Wallet — compact (icon only on mobile, full on large) */}
+        {/* Wallet — replaced by a 'Launching soon' affordance during the
+            public preview so nobody tries to connect-and-buy. */}
         <div className="shrink-0 flex items-center">
-          <ConnectButton
-            showBalance={false}
-            chainStatus={{ smallScreen: "none", largeScreen: "icon" }}
-            accountStatus={{ smallScreen: "avatar", largeScreen: "address" }}
-            label="Connect"
-          />
+          {IS_COMING_SOON ? (
+            <ComingSoonButton />
+          ) : (
+            <ConnectButton
+              showBalance={false}
+              chainStatus={{ smallScreen: "none", largeScreen: "icon" }}
+              accountStatus={{ smallScreen: "avatar", largeScreen: "address" }}
+              label="Connect"
+            />
+          )}
         </div>
 
         {/* Mobile hamburger */}

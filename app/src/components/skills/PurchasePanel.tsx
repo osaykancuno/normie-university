@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import { useAccount, useWaitForTransactionReceipt } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { IS_COMING_SOON } from "@/config/launch";
+import { ComingSoonButton } from "@/components/layout/ComingSoonButton";
 import { maxUint256 } from "viem";
 import { useDemoMode } from "@/hooks/useSkills";
 import { ACTIVE_CHAIN } from "@/config/chains";
@@ -137,6 +139,29 @@ export function PurchasePanel({ skill }: { skill: Skill }) {
           to mint your Soulbound credential. You can request a refund after the
           refund window expires if never completed.
         </p>
+      </div>
+    );
+  }
+
+  // --- Pre-launch preview: no wallet connection at all ---
+  if (IS_COMING_SOON) {
+    return (
+      <div className="space-y-3 rounded-none border border-[color:var(--accent-warn)] bg-surface p-5">
+        <div className="flex items-center gap-2">
+          <span className="relative inline-flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[color:var(--accent-warn)] opacity-60" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[color:var(--accent-warn)]" />
+          </span>
+          <span className="mono text-[10px] font-semibold uppercase tracking-wider text-[color:var(--accent-warn)]">
+            Launching soon
+          </span>
+        </div>
+        <p className="text-sm leading-relaxed text-ink-soft">
+          Skill purchases go live with the audited mainnet release. For now
+          this is a public preview — inspect the full module below, no wallet
+          needed.
+        </p>
+        <ComingSoonButton variant="block" />
       </div>
     );
   }

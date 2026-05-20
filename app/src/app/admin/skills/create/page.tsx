@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { useAccount, useWaitForTransactionReceipt } from "wagmi";
 import { parseEther, parseUnits } from "viem";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { IS_COMING_SOON } from "@/config/launch";
+import { ComingSoonButton } from "@/components/layout/ComingSoonButton";
 import { useCreateSkill, useIsCreator } from "@/hooks/useSkillRegistry";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -105,7 +107,15 @@ export default function CreateSkillPage() {
         on the SkillRegistry. Public publishing opens in v2.
       </p>
 
-      {!address ? (
+      {IS_COMING_SOON ? (
+        <div className="mt-8 rounded-none border border-[color:var(--accent-warn)] bg-surface p-6 text-center">
+          <p className="mb-3 text-sm text-ink-soft">
+            Skill authoring opens with the mainnet release. This is a public
+            preview — wallet connection is disabled.
+          </p>
+          <div className="inline-block"><ComingSoonButton /></div>
+        </div>
+      ) : !address ? (
         <div className="mt-8 rounded-none border border-line bg-surface p-6 text-center">
           <p className="mb-3 text-sm text-ink-soft">Connect a wallet to continue.</p>
           <ConnectButton />

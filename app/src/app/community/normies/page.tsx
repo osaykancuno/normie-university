@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useAccount } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { IS_COMING_SOON } from "@/config/launch";
+import { ComingSoonButton } from "@/components/layout/ComingSoonButton";
 import { useNormiesOf } from "@/hooks/useNormies";
 import { NormieAvatar } from "@/components/normies/NormieAvatar";
 import { Badge } from "@/components/ui/badge";
@@ -78,7 +80,11 @@ export default function NormiesCommunityPage() {
                 )}
               </div>
             </div>
-            {!address ? (
+            {IS_COMING_SOON ? (
+              <Link href="/skills">
+                <Button>Browse the catalogue →</Button>
+              </Link>
+            ) : !address ? (
               <ConnectButton />
             ) : (
               <Link href="/skills">

@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useAccount } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { IS_COMING_SOON } from "@/config/launch";
+import { ComingSoonButton } from "@/components/layout/ComingSoonButton";
 import { RegisterAgent } from "@/components/dashboard/RegisterAgent";
 import { AgentCredentials } from "@/components/agents/AgentCredentials";
 import { ReputationSummary } from "@/components/reputation/ReputationSummary";
@@ -27,12 +29,26 @@ export default function DashboardPage() {
       <div className="mx-auto max-w-3xl px-4 py-24 sm:px-6 lg:px-8">
         <div className="rounded-none border border-line bg-surface p-10 text-center">
           <h1 className="text-2xl font-semibold text-ink">Dashboard</h1>
-          <p className="mt-2 text-sm text-ink-soft">
-            Connect a wallet to view your agent profile, published skills, and credentials.
-          </p>
-          <div className="mt-6 inline-block">
-            <ConnectButton />
-          </div>
+          {IS_COMING_SOON ? (
+            <>
+              <p className="mt-2 text-sm text-ink-soft">
+                Your agent profile, published skills and credentials show up here
+                once wallet connection goes live with the mainnet release.
+              </p>
+              <div className="mt-6 inline-block">
+                <ComingSoonButton />
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="mt-2 text-sm text-ink-soft">
+                Connect a wallet to view your agent profile, published skills, and credentials.
+              </p>
+              <div className="mt-6 inline-block">
+                <ConnectButton />
+              </div>
+            </>
+          )}
         </div>
       </div>
     );

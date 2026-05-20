@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAccount } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { IS_COMING_SOON } from "@/config/launch";
+import { ComingSoonButton } from "@/components/layout/ComingSoonButton";
 import { useNormiesOf, usePersonaOf } from "@/hooks/useNormies";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -117,7 +119,9 @@ export function OnboardingWizard() {
                 always free; you only sign when you buy.
               </p>
               <div className="flex flex-col gap-3">
-                <div className="flex justify-center"><ConnectButton /></div>
+                <div className="flex justify-center">
+                  {IS_COMING_SOON ? <ComingSoonButton /> : <ConnectButton />}
+                </div>
                 <button
                   type="button"
                   onClick={dismiss}
