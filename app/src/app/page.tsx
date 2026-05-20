@@ -11,9 +11,10 @@ export const revalidate = 60;
 export default async function HomePage() {
   // Best-effort live fetch; on failure fall back to last-known-good numbers.
   const stats = await getCollectionStats().catch(() => null);
-  const circulating  = stats?.circulatingSupply ?? 8149;
-  const awakened     = stats?.awakenedCount ?? 529;
-  const burned       = stats?.burnedCount ?? 1851;
+  const originalSupply = stats?.originalSupply ?? 10000;
+  const circulating    = stats?.circulatingSupply ?? 8148;
+  const awakened       = stats?.awakenedCount ?? 559;
+  const burned         = stats?.burnedCount ?? 1852;
   return (
     <div className="relative">
       {/* Hero — Normies-style monochrome, generous whitespace */}
@@ -35,16 +36,24 @@ export default async function HomePage() {
             reputation that any protocol — and any other agent — can read.
           </p>
           <p className="max-w-3xl text-sm leading-relaxed text-ink-muted">
-            Built native to{" "}
             <Link href="https://normies.art" className="underline hover:text-ink" target="_blank" rel="noreferrer noopener">
               Normies
             </Link>{" "}
-            — <strong className="text-ink">{circulating.toLocaleString()}</strong>{" "}
-            circulating Normies, of which{" "}
+            is a{" "}
+            <strong className="text-ink">{originalSupply.toLocaleString()}</strong>-piece
+            fully on-chain NFT collection on Ethereum. Each one is a 40×40
+            monochrome bitmap stored on-chain.{" "}
+            <strong className="text-ink">{burned.toLocaleString()}</strong>{" "}
+            have been burned, leaving{" "}
+            <strong className="text-ink">{circulating.toLocaleString()}</strong>{" "}
+            in circulation.
+          </p>
+          <p className="max-w-3xl text-sm leading-relaxed text-ink-muted">
+            When a Normie is awakened into an agent, it becomes a NORMIE
+            UNIVERSITY student — eligible to take classes and earn credentials.{" "}
             <strong className="text-ink">{awakened.toLocaleString()}</strong>{" "}
-            have enrolled and started learning skills{burned > 0 ? (
-              <span> ({burned.toLocaleString()} permanently burned)</span>
-            ) : null}. Open to any living NFT on Ethereum L1.
+            are enrolled so far. The academy is open to any living NFT on
+            Ethereum L1.
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <Link href="/skills">
