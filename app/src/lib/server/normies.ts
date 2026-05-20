@@ -231,11 +231,15 @@ export async function getAgentBinding(tokenId: string | number): Promise<AgentBi
 }
 
 /// GET /agents/info/:tokenId — full persona JSON, regenerated live from canvas state.
+/// Returns null ONLY for a genuine 404 (token not awakened / not found).
+/// Any other failure (502, timeout, network) RETHROWS so callers can tell a
+/// real "not found" apart from a transient upstream outage.
 export async function getPersona(tokenId: string | number): Promise<PersonaInfo | null> {
   try {
     return await getJson<PersonaInfo>(`/agents/info/${tokenId}`, TTL.canvas);
-  } catch {
-    return null;
+  } catch (e) {
+    if (e instanceof NormiesApiError && e.status === 404) return null;
+    throw e;
   }
 }
 

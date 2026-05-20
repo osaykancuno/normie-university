@@ -3,7 +3,7 @@
 ///         binding, persona, and A2A Agent Card — into one cached response.
 ///         Powers the persona-first UX of NORMIE UNIVERSITY.
 
-import { getAgentBinding, getPersona, getA2AAgentCard } from "@/lib/server/normies";
+import { getAgentBinding, getPersona, getA2AAgentCard, NormiesApiError } from "@/lib/server/normies";
 
 export async function GET(
   _req: Request,
@@ -15,13 +15,27 @@ export async function GET(
     return Response.json({ error: "Invalid Normie tokenId (0..9999)" }, { status: 400 });
   }
 
-  const [bindingRaw, persona, agentCard] = await Promise.all([
-    getAgentBinding(n),
-    getPersona(n),
-    getA2AAgentCard(n).catch(() => null),
-  ]);
+  let bindingRaw: Awaited<ReturnType<typeof getAgentBinding>> = null;
+  let persona: Awaited<ReturnType<typeof getPersona>> = null;
+  let agentCard: Awaited<ReturnType<typeof getA2AAgentCard>> = null;
+  try {
+    [bindingRaw, persona, agentCard] = await Promise.all([
+      getAgentBinding(n),
+      getPersona(n),
+      getA2AAgentCard(n).catch(() => null),
+    ]);
+  } catch (e) {
+    // Upstream degraded (502 / timeout). Surface a 502 so the client can tell
+    // an outage apart from a genuine 404 'burned token'.
+    const status = e instanceof NormiesApiError ? (e.status >= 500 ? 502 : e.status) : 502;
+    return Response.json(
+      { error: "Normies API degraded", upstream: status },
+      { status: 502 }
+    );
+  }
 
   if (!persona) {
+    // getPersona returned null → genuine upstream 404 (token not found).
     return Response.json({ error: "Persona unavailable" }, { status: 404 });
   }
 

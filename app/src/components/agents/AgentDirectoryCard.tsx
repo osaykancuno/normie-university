@@ -4,9 +4,16 @@ import Link from "next/link";
 import { usePersonaPreview } from "@/hooks/useNormies";
 import { Badge } from "@/components/ui/badge";
 
-/// Card for a single Normie agent in the directory grid.
+const NORMIES_API = "https://api.normies.art";
+
+/// Card for a single Normie in the directory grid.
 /// Pulls persona live from /api/normies/persona-preview/{id} (cached server-side).
 /// Filters are evaluated client-side once the persona has loaded.
+///
+/// Degraded mode: when the Normies API is unreachable (502 outage) the
+/// persona fetch resolves with no data. We must NOT sit on an infinite
+/// pulsing skeleton — instead render a minimal but usable card (token id +
+/// image attempt + link) so the directory never looks broken.
 export function AgentDirectoryCard({
   tokenId,
   typeFilter,
@@ -18,11 +25,44 @@ export function AgentDirectoryCard({
   levelFilter: "all" | "1" | "2" | "3+";
   stateFilter: "all" | "customized" | "purist";
 }) {
-  const { data, isLoading } = usePersonaPreview(tokenId);
+  const { data, isLoading, error } = usePersonaPreview(tokenId);
 
-  if (isLoading || !data) {
+  // Genuinely still loading — first paint.
+  if (isLoading) {
     return (
       <div className="h-[260px] animate-pulse border border-line bg-surface" />
+    );
+  }
+
+  // Degraded: fetch finished but no data (Normies API outage). Render a
+  // minimal card rather than a forever-skeleton. No filtering possible
+  // without persona data, so we always show it.
+  if (error || !data) {
+    return (
+      <Link
+        href={`/agents/normie/${tokenId}`}
+        className="group block border border-line bg-surface transition-colors hover:border-line-strong"
+      >
+        <div className="flex aspect-square items-center justify-center bg-canvas">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`${NORMIES_API}/normie/${tokenId}/image.svg`}
+            alt={`Normie #${tokenId}`}
+            className="h-full w-full pixel"
+            onError={(e) => { (e.currentTarget.style.display = "none"); }}
+          />
+        </div>
+        <div className="space-y-1 p-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-base font-semibold tracking-tight text-ink">
+              Normie #{tokenId}
+            </div>
+          </div>
+          <p className="text-[11px] text-ink-muted">
+            Live persona syncing — Normies API briefly unavailable.
+          </p>
+        </div>
+      </Link>
     );
   }
 

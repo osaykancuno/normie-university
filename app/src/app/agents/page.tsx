@@ -41,6 +41,10 @@ export default function AgentsDirectoryPage() {
   const { items: awakened, refreshedAt: awakenedRefreshedAt } = useAwakenedList(100, 60_000);
   const collectionStats = useCollectionStats();
 
+  // Degraded mode: the awakened-list fetch completed (refreshedAt set) but
+  // came back empty — the upstream Normies indexer is briefly down.
+  const apiDegraded = awakenedRefreshedAt !== null && awakened.length === 0;
+
   // Batched per-token canvas state. Lets us compute LEVEL + CUSTOMIZED
   // filter counts against the awakened pool without 100 separate fetches.
   // Server-cached via getPersonaPreview (shared with the card-level call).
@@ -181,6 +185,19 @@ export default function AgentsDirectoryPage() {
       {error && (
         <div className="mb-6 border border-[color:var(--accent-err)] bg-surface-2 p-3 text-sm text-[color:var(--accent-err)]">
           {error}
+        </div>
+      )}
+
+      {/* Degraded-mode banner — the Normies API responded but with an empty
+          list, i.e. the upstream Ponder indexer is briefly unavailable. */}
+      {apiDegraded && (
+        <div className="mb-6 border border-[color:var(--accent-warn)] bg-paper p-3 text-[12px] leading-relaxed text-ink-soft">
+          <span className="mono uppercase tracking-wider font-semibold text-[color:var(--accent-warn)]">
+            Normies API syncing
+          </span>{" "}
+          — the live directory feed is briefly unavailable upstream. Showing a
+          featured set meanwhile; search by token id still works, and the page
+          auto-recovers the moment the API responds.
         </div>
       )}
 

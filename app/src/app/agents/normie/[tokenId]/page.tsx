@@ -34,9 +34,20 @@ export default function NormieAgentProfilePage({
   const { data: burns }      = useBurnHistory(validId ? id : undefined);
   const { data: normieMeta, error: normieErr } = useNormie(validId ? id : undefined);
 
-  // Detect a burned/non-existent token: both owner lookup and persona fail.
+  // Distinguish a genuinely burned/non-existent token (upstream 404) from a
+  // transient Normies API outage (502 / timeout). Only a 404 means "gone" —
+  // a 502 must NOT render the burned-token page for a perfectly valid Normie.
+  const is404 = (e: Error | null | undefined) =>
+    !!e && /\(404\)/.test(e.message);
+  const isApiDown = (e: Error | null | undefined) =>
+    !!e && /\((?:5\d\d|0)\)/.test(e.message);
+
   const isBurnedOrGone =
-    validId && normieErr && personaErr && !preview;
+    validId && is404(normieErr) && is404(personaErr) && !preview;
+
+  // Upstream degraded: persona + owner both failed but NOT with a 404.
+  const isApiDegraded =
+    validId && !isBurnedOrGone && isApiDown(personaErr) && isApiDown(normieErr) && !preview;
   const ownerAddr = normieMeta?.owner;
   // v1 design: SkillCredential is mapping(wallet => skills). We show the skills
   // owned by the *current* holder wallet of this Normie. If the NFT is sold,
@@ -57,6 +68,27 @@ export default function NormieAgentProfilePage({
     return (
       <Shell>
         <Err>Invalid Normie token id (range 0–9999).</Err>
+      </Shell>
+    );
+  }
+  if (isApiDegraded) {
+    return (
+      <Shell>
+        <div className="mx-auto max-w-xl border border-[color:var(--accent-warn)] bg-surface p-8 text-center">
+          <h1 className="text-2xl font-semibold text-ink">Normie #{id}</h1>
+          <p className="mt-2 text-sm text-ink-soft">
+            The Normies API is briefly unavailable upstream, so this Normie&apos;s
+            live persona and canvas state can&apos;t be loaded right now. This is a
+            temporary outage on the data source — not a problem with the token.
+          </p>
+          <p className="mt-2 text-xs text-ink-muted">
+            Reload in a moment — the page recovers automatically once the API responds.
+          </p>
+          <div className="mt-5 flex justify-center gap-3">
+            <Link href="/agents" className="mono text-xs text-ink underline">← back to directory</Link>
+            <Link href="/skills" className="mono text-xs text-ink underline">browse skills</Link>
+          </div>
+        </div>
       </Shell>
     );
   }
