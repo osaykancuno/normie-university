@@ -16,10 +16,13 @@ export async function GET(req: Request) {
         "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
       },
     });
-  } catch (e) {
+  } catch {
+    // Upstream degraded + no cached list available (cold start). Return an
+    // empty list with a degraded flag — the /agents page already falls back
+    // to FALLBACK_FEATURED when the list is empty, so the grid never breaks.
     return Response.json(
-      { error: e instanceof Error ? e.message : "awakened list fetch failed" },
-      { status: 502 }
+      { count: 0, items: [], degraded: true },
+      { headers: { "Cache-Control": "public, s-maxage=15, stale-while-revalidate=60" } }
     );
   }
 }

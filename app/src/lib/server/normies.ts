@@ -31,6 +31,19 @@ const TTL = {
   canvas:    60_000,        // 1 min — fast-moving
 };
 
+/// cachedFetch with STALE-ON-ERROR semantics.
+///
+/// The Normies API is backed by a Ponder indexer that intermittently
+/// times out (502 "operation was aborted due to timeout"). When that
+/// happens we must NOT surface an empty/zero value to the UI — the
+/// awakened count dropping to 0 mid-demo looks broken.
+///
+/// Behaviour:
+///  - Fresh cache hit (within ttl)      → return it.
+///  - Stale cache + fetcher succeeds    → return + refresh fresh value.
+///  - Stale cache + fetcher THROWS      → return the stale value anyway
+///    (a number from 5 minutes ago beats a zero from right now).
+///  - No cache at all + fetcher throws  → rethrow (caller decides default).
 async function cachedFetch<T>(
   key: string,
   ttlMs: number,
@@ -39,9 +52,19 @@ async function cachedFetch<T>(
   const now = Date.now();
   const hit = cache.get(key) as CacheEntry<T> | undefined;
   if (hit && now - hit.at < ttlMs) return hit.value;
-  const value = await fetcher();
-  cache.set(key, { value, at: now });
-  return value;
+  try {
+    const value = await fetcher();
+    cache.set(key, { value, at: now });
+    return value;
+  } catch (err) {
+    // Upstream failed. Serve the last-known-good value if we have one,
+    // regardless of how stale — better than a blank/zero.
+    if (hit) {
+      // mark the entry so it's retried on the next call but kept usable
+      return hit.value;
+    }
+    throw err;
+  }
 }
 
 async function getJson<T>(path: string, ttlMs: number): Promise<T> {
@@ -336,24 +359,45 @@ export type CollectionStats = {
 };
 
 export async function getCollectionStats(): Promise<CollectionStats> {
-  // 30s cache — this is the most live-feeling metric on the site
+  // 30s cache + stale-on-error: if the Normies Ponder indexer 502s, we keep
+  // serving the last good numbers rather than dropping the awakened count
+  // to 0. The fetcher THROWS on upstream failure so cachedFetch's
+  // stale-on-error path triggers — it must not silently return zeros, that
+  // would poison the cache with a bad "successful" value.
   return cachedFetch("collection-stats", 30_000, async () => {
     const [statsRes, countRes] = await Promise.all([
-      fetch(`${NORMIES_API}/history/stats`, { headers: { accept: "application/json" } }),
-      fetch(`${NORMIES_API}/agents/count`, { headers: { accept: "application/json" } }),
+      fetch(`${NORMIES_API}/history/stats`,  { headers: { accept: "application/json" } }),
+      fetch(`${NORMIES_API}/agents/count`,   { headers: { accept: "application/json" } }),
     ]);
+    // If BOTH upstream calls failed there is nothing trustworthy to cache —
+    // throw so cachedFetch serves the previous good value (or the caller's
+    // fallback on a cold start).
+    if (!statsRes.ok && !countRes.ok) {
+      throw new NormiesApiError(
+        `Normies API degraded: history/stats ${statsRes.status}, agents/count ${countRes.status}`,
+        502
+      );
+    }
     const stats = statsRes.ok ? await statsRes.json() : {};
-    const count = countRes.ok ? await countRes.json() : { count: 0 };
+    const count = countRes.ok ? await countRes.json() : null;
     const originalSupply = Number(stats.totalTokenData ?? 10000);
     const burnedCount    = Number(stats.totalBurnedTokens ?? 0);
+    // Re-use the last good awakened count if /agents/count specifically failed
+    // (it's the most fragile endpoint). Pull from the cache directly.
+    const prev = cache.get("collection-stats") as CacheEntry<CollectionStats> | undefined;
+    const awakenedCount = count
+      ? Number(count.count ?? 0)
+      : (prev?.value.awakenedCount ?? 0);
     return {
       originalSupply,
       burnedCount,
       circulatingSupply: Math.max(0, originalSupply - burnedCount),
-      awakenedCount: Number(count.count ?? 0),
-      totalTransforms: Number(stats.totalTransforms ?? 0),
-      totalBurnCommitments: Number(stats.totalBurnCommitments ?? 0),
-      totalActionPointsDistributed: String(stats.totalActionPointsDistributed ?? "0"),
+      awakenedCount,
+      totalTransforms: Number(stats.totalTransforms ?? prev?.value.totalTransforms ?? 0),
+      totalBurnCommitments: Number(stats.totalBurnCommitments ?? prev?.value.totalBurnCommitments ?? 0),
+      totalActionPointsDistributed: String(
+        stats.totalActionPointsDistributed ?? prev?.value.totalActionPointsDistributed ?? "0"
+      ),
     };
   });
 }
@@ -376,15 +420,17 @@ export type AwakenedAgentSummary = {
 /// real ever-growing count.
 export async function getAwakenedList(limit = 24): Promise<AwakenedAgentSummary[]> {
   const capped = Math.max(1, Math.min(limit, 100));
+  // Stale-on-error: the fetcher THROWS on upstream failure so cachedFetch
+  // keeps serving the last good list instead of an empty grid.
   return cachedFetch(`awakened-list:${capped}`, 60_000, async () => {
-    try {
-      const res = await fetch(`${NORMIES_API}/agents/list?limit=${capped}`, {
-        headers: { accept: "application/json" },
-      });
-      if (!res.ok) return [];
-      const j = await res.json();
-      return (j.items ?? []) as AwakenedAgentSummary[];
-    } catch { return []; }
+    const res = await fetch(`${NORMIES_API}/agents/list?limit=${capped}`, {
+      headers: { accept: "application/json" },
+    });
+    if (!res.ok) {
+      throw new NormiesApiError(`agents/list returned ${res.status}`, res.status);
+    }
+    const j = await res.json();
+    return (j.items ?? []) as AwakenedAgentSummary[];
   });
 }
 
