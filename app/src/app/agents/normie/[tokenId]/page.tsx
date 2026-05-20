@@ -131,9 +131,9 @@ export default function NormieAgentProfilePage({
             <CardContent className="space-y-3 p-5">
               <div className="flex flex-wrap items-center gap-2">
                 {binding?.bound ? (
-                  <Badge variant="success">Awakened agent</Badge>
+                  <Badge variant="success">Enrolled</Badge>
                 ) : (
-                  <Badge variant="warning">Not yet awakened</Badge>
+                  <Badge variant="warning">Not yet enrolled</Badge>
                 )}
                 <Badge variant="outline">{persona.type}</Badge>
               </div>
@@ -152,7 +152,7 @@ export default function NormieAgentProfilePage({
               {binding?.bound && binding.agentId && (
                 <div>
                   <div className="mono text-[10px] uppercase tracking-wider text-ink-muted">
-                    ERC-8004 agent id
+                    Normie agent id
                   </div>
                   <div className="mono text-xs text-ink">{binding.agentId}</div>
                 </div>

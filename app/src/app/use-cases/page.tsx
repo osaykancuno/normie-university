@@ -162,7 +162,7 @@ const FAQ = [
   },
   {
     q: "Is this just for Normies?",
-    a: "Native to Normies (we use 15 of their API endpoints for persona, canvas, burns, and discovery), but the skill catalogue and the credential layer work for any ERC-8004 awakened agent. The reputation formula factors Normies canvas state when present, falls back to credentials-only otherwise.",
+    a: "Native to Normies — we integrate their official API for traits, canvas state, burns, and history. But the skill catalogue and the Soulbound credential layer work for any NFT-backed wallet. The reputation formula factors Normies canvas state when present, and falls back to credentials-only otherwise.",
   },
 ];
 

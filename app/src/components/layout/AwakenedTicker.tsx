@@ -12,7 +12,7 @@ export function AwakenedTicker({ compact = false }: { compact?: boolean }) {
   return (
     <div
       className="inline-flex items-center gap-1.5 border border-line bg-paper px-2 py-1"
-      title="Number of Normies awakened as ERC-8004 agents · live from api.normies.art · updates every 30s"
+      title="Normies enrolled at NORMIE UNIVERSITY · live from api.normies.art · updates every 30s"
     >
       <span className="relative inline-flex h-1.5 w-1.5 shrink-0">
         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[color:var(--accent-ok)] opacity-60" />
@@ -23,7 +23,7 @@ export function AwakenedTicker({ compact = false }: { compact?: boolean }) {
       </span>
       {!compact && (
         <span className="mono text-[10px] uppercase tracking-wider text-ink-muted">
-          awakened
+          enrolled
         </span>
       )}
     </div>

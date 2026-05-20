@@ -42,9 +42,9 @@ export default async function HomePage() {
             — <strong className="text-ink">{circulating.toLocaleString()}</strong>{" "}
             circulating Normies, of which{" "}
             <strong className="text-ink">{awakened.toLocaleString()}</strong>{" "}
-            are already awakened as ERC-8004 agents{burned > 0 ? (
+            have enrolled and started learning skills{burned > 0 ? (
               <span> ({burned.toLocaleString()} permanently burned)</span>
-            ) : null}. Ready for any living NFT collection on Ethereum L1.
+            ) : null}. Open to any living NFT on Ethereum L1.
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <Link href="/skills">
@@ -52,7 +52,7 @@ export default async function HomePage() {
             </Link>
             <Link href="/community/normies">
               <Button size="lg" variant="outline">
-                Awaken your Normie&apos;s skills
+                Enroll your Normie
               </Button>
             </Link>
           </div>

@@ -126,22 +126,22 @@ export default function AgentsDirectoryPage() {
       {/* Header */}
       <div className="mb-8">
         <div className="mb-2 flex flex-wrap items-center gap-2">
-          <Badge>Agent directory</Badge>
+          <Badge>Student directory</Badge>
           <Badge variant="outline">Normies-first</Badge>
         </div>
         <h1 className="text-3xl font-semibold tracking-tight text-ink md:text-4xl">
           Discover{" "}
-          <span className="border-b-4 border-line-strong">awakened agents</span>.
+          <span className="border-b-4 border-line-strong">enrolled Normies</span>.
         </h1>
         <p className="mt-2 max-w-3xl text-sm text-ink-soft">
-          Searchable index of ERC-8004 agents — filtered by type, level, and
-          customization state. Live persona data pulled from{" "}
+          Searchable index of Normies — filtered by type, level, and
+          customization state. Live data pulled from{" "}
           <a href="https://api.normies.art" target="_blank" rel="noreferrer noopener" className="underline hover:text-ink">api.normies.art</a>.
           {collectionStats && (
             <>
               {" "}
               <span className="mono">{collectionStats.awakenedCount.toLocaleString()}</span>{" "}
-              awakened of{" "}
+              enrolled of{" "}
               <span className="mono">{collectionStats.circulatingSupply.toLocaleString()}</span>{" "}
               circulating
               {collectionStats.burnedCount > 0 && (
@@ -156,9 +156,9 @@ export default function AgentsDirectoryPage() {
             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[color:var(--accent-ok)]" />
           </span>
           <span>
-            Showing the latest {awakened.length} awakenings
+            Showing the latest {awakened.length} Normies
             {collectionStats && (
-              <> of {collectionStats.awakenedCount.toLocaleString()} total</>
+              <> of {collectionStats.awakenedCount.toLocaleString()} enrolled</>
             )}
             {" "}· refreshes every 60s
             {awakenedRefreshedAt && (
@@ -229,20 +229,20 @@ export default function AgentsDirectoryPage() {
         </FilterGroup>
       </div>
 
-      {/* Featured Normie agents */}
+      {/* Featured Normies */}
       <div className="mb-6 flex items-center justify-between">
         <h2 className="mono text-xs uppercase tracking-wider text-ink-muted">
-          Featured awakened Normies
+          Featured Normies
         </h2>
-        <Link href="https://normies.art/lab" target="_blank" rel="noreferrer noopener" className="mono text-xs text-ink underline hover:opacity-70">
-          → Awaken your Normie at normies.art/lab
+        <Link href="https://normies.art" target="_blank" rel="noreferrer noopener" className="mono text-xs text-ink underline hover:opacity-70">
+          → Get a Normie at normies.art
         </Link>
       </div>
       {filteredFeatured.length === 0 ? (
         <div className="border border-line bg-surface p-8 text-center">
           <p className="text-sm text-ink-soft">
-            No <span className="font-medium text-ink">{typeF}</span> Normies have awakened
-            in the latest {awakened.length} agents fetched from the Normies API.
+            No <span className="font-medium text-ink">{typeF}</span> Normies
+            in the latest {awakened.length} fetched from the Normies API.
           </p>
           <p className="mt-1 text-xs text-ink-muted">
             Of the latest pool:{" "}

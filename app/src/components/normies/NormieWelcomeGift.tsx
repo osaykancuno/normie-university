@@ -15,7 +15,11 @@ import { Button } from "@/components/ui/button";
 /// Renders nothing if the wallet doesn't hold a Normie or the gift has
 /// already been claimed.
 
-const GIFT_SKILL_ID = 5n; // ERC-8004 Agent Registration
+// Welcome-gift skill. Skill #2 (Aave V3 Supply & Withdraw) — the canonical
+// first DeFi lesson, Beginner tier, an active catalogue entry. Previously
+// pointed at #5 (ERC-8004 registration) which has been deactivated.
+const GIFT_SKILL_ID = 2n;
+const GIFT_SKILL_NAME = "Aave V3 Supply & Withdraw";
 
 type Status =
   | { kind: "idle" }
@@ -37,11 +41,11 @@ export function NormieWelcomeGift({ address }: { address: `0x${string}` | undefi
           <Badge variant="success">Welcome gift claimed</Badge>
         </div>
         <p className="text-sm text-ink-soft">
-          ERC-8004 Agent Registration recorded on-chain for Normie #{holder.tokenIds[0]}.{" "}
-          <Link href="/skills/5" className="text-ink underline hover:underline">
+          {GIFT_SKILL_NAME} purchase recorded on-chain for Normie #{holder.tokenIds[0]}.{" "}
+          <Link href={`/skills/${GIFT_SKILL_ID}`} className="text-ink underline hover:underline">
             Submit completion proof
           </Link>{" "}
-          to mint the SBT credential.
+          to mint the Soulbound credential.
         </p>
         <p className="mt-2 font-mono text-xs text-ink-muted">
           tx: {status.txHash.slice(0, 10)}…{status.txHash.slice(-6)}
@@ -88,8 +92,8 @@ export function NormieWelcomeGift({ address }: { address: `0x${string}` | undefi
       </h3>
       <p className="mt-1 text-sm text-ink-soft">
         Normie #{holder.tokenIds[0]} is eligible for a sponsored claim of the{" "}
-        <span className="font-medium text-ink">ERC-8004 Agent Registration</span>{" "}
-        skill — value $1, paid by NORMIE UNIVERSITY. Click below to record the purchase
+        <span className="font-medium text-ink">{GIFT_SKILL_NAME}</span>{" "}
+        skill — paid by NORMIE UNIVERSITY. Click below to record the purchase
         on-chain (zero gas, zero cost).
       </p>
       <div className="mt-4 flex flex-wrap items-center gap-3">

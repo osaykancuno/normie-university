@@ -41,7 +41,7 @@ export default function NormiesCommunityPage() {
             </Link>
             {" "}(ERC-721 mint, EIP-2981 royalty enforcement, Blur collection bidding),
             and a persona-tailored skill recommendation engine. The school
-            for awakened agents — and class is always in session.
+            for Normies — and class is always in session.
           </p>
         </div>
       </section>

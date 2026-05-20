@@ -94,8 +94,8 @@ export function OnboardingWizard() {
               </p>
               <p className="text-xs leading-relaxed text-ink-muted">
                 Native to <strong className="text-ink-soft">Normies</strong>{" "}
-                — an ERC-8004 awakened-agent collection on Ethereum L1 (live
-                supply adjusted for ongoing burn). Ready for any living NFT.
+                — a 10,000-piece on-chain NFT collection on Ethereum L1 (live
+                supply adjusted for ongoing burn). Open to any living NFT.
               </p>
               <div className="flex justify-end">
                 <Button onClick={() => setStep(2)}>Enter →</Button>
@@ -157,7 +157,7 @@ export function OnboardingWizard() {
                   </p>
                   <p className="text-sm leading-relaxed text-ink-soft">
                     You qualify for a sponsored welcome gift: the{" "}
-                    <strong className="text-ink">ERC-8004 Agent Registration</strong>{" "}
+                    <strong className="text-ink">Aave V3 Supply &amp; Withdraw</strong>{" "}
                     skill, on us. Claim it from your dashboard.
                   </p>
                   <div className="flex flex-wrap gap-2">

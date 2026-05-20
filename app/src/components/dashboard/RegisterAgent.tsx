@@ -33,10 +33,10 @@ export function RegisterAgent() {
 
   return (
     <div className="rounded-none border border-line bg-surface p-5">
-      <h3 className="text-base font-semibold text-ink">Register as an agent</h3>
+      <h3 className="text-base font-semibold text-ink">Enroll your wallet</h3>
       <p className="mt-1 text-sm text-ink-soft">
-        Publishing your registration file mints an ERC-8004 agent token bound to
-        this address. You&apos;ll need it to purchase skills and earn credentials.
+        Publishing your registration file enrolls this wallet on the NORMIE
+        UNIVERSITY registry. You&apos;ll need it to purchase skills and earn credentials.
       </p>
 
       <div className="mt-4 space-y-3">

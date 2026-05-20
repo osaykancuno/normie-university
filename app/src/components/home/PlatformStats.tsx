@@ -50,7 +50,7 @@ export function PlatformStats() {
     { label: "Credentials Issued",  value: formatNum(credentials),source: "on-chain" },
     { label: "Ranked Agents",       value: formatNum(tracked),    source: "on-chain" },
     {
-      label: "Normies Awakened",
+      label: "Normies Enrolled",
       value: collection ? collection.awakenedCount.toLocaleString() : "—",
       source: "api.normies.art",
     },

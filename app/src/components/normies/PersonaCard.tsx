@@ -91,7 +91,7 @@ export function PersonaCard({ address }: { address: `0x${string}` | undefined })
 
         {data.binding?.bound && data.binding.agentId && (
           <div className="text-xs text-ink-muted">
-            ERC-8004 agent #{data.binding.agentId} · bound via Adapter8004
+            Normie agent #{data.binding.agentId} · bound via Adapter8004
           </div>
         )}
       </CardContent>
