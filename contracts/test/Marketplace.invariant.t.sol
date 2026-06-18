@@ -106,8 +106,10 @@ contract MarketplaceHandler is Test {
         uint8 level = uint8((levelSeed % 3) + 1);    // 1..3
         uint256 score = scoreSeed % 101;              // 0..100
 
+        uint256 deadline = block.timestamp + 1 hours;
+        bytes32 nonce = keccak256(abi.encodePacked(a, skillId, level, score, seed));
         bytes32 payload = keccak256(abi.encodePacked(
-            a, skillId, level, score, block.chainid, address(market)
+            a, skillId, level, score, deadline, nonce, block.chainid, address(market)
         ));
         bytes32 ethHash = keccak256(
             abi.encodePacked("\x19Ethereum Signed Message:\n32", payload)
@@ -120,7 +122,7 @@ contract MarketplaceHandler is Test {
         uint256 amountPaid = p.amountPaid;
 
         vm.prank(a);
-        try market.completeSkill(skillId, level, score, sig) {
+        try market.completeSkill(skillId, level, score, deadline, nonce, sig) {
             if (paidUsdc) ghostUsdcOut += amountPaid;
             else          ghostEthOut  += amountPaid;
         } catch {}

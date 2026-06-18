@@ -88,10 +88,14 @@ interface ISkillMarketplace {
     ) external;
 
     /// @notice Complete a skill (agent submits proof signed by an off-chain VERIFIER)
+    /// @param deadline  unix-seconds expiry of the verifier authorization
+    /// @param nonce     single-use nonce carried by the authorization
     function completeSkill(
         uint256 skillId,
         uint8 level,
         uint256 score,
+        uint256 deadline,
+        bytes32 nonce,
         bytes calldata signature
     ) external;
 
@@ -106,6 +110,8 @@ interface ISkillMarketplace {
         uint256 skillId,
         uint8 level,
         uint256 score,
+        uint256 deadline,
+        bytes32 nonce,
         bytes calldata signature
     ) external;
 

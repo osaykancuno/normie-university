@@ -150,6 +150,8 @@ export async function relayCompleteFor(
   skillId: bigint,
   level: number,
   score: bigint,
+  deadline: bigint,
+  nonce: Hex,
   signature: Hex
 ): Promise<RelayResult> {
   const wallet = getRelayer();
@@ -165,7 +167,7 @@ export async function relayCompleteFor(
       address: addr.SkillMarketplace,
       abi: SKILL_MARKETPLACE_ABI,
       functionName: "completeSkillFor",
-      args: [agent, skillId, level, score, signature],
+      args: [agent, skillId, level, score, deadline, nonce, signature],
     });
     const receipt = await pub.waitForTransactionReceipt({ hash: txHash });
     if (receipt.status !== "success") {

@@ -26,7 +26,9 @@ import {
     SkillAI__RefundNotReady,
     SkillAI__ZeroAddress,
     SkillAI__SkillNotFound,
-    SkillAI__SkillNotActive
+    SkillAI__SkillNotActive,
+    SkillAI__SignatureExpired,
+    SkillAI__NonceAlreadyUsed
 } from "../src/libraries/SkillTypes.sol";
 
 contract SkillMarketplaceTest is Test {
@@ -104,14 +106,42 @@ contract SkillMarketplaceTest is Test {
         skillId = skillReg.createSkill(p);
     }
 
+    /// @dev Last deadline + nonce produced by _signCompletion. Call sites read
+    ///      these to pass the matching values into completeSkill*.
+    uint256 internal _sigDeadline;
+    bytes32 internal _sigNonce;
+
     function _signCompletion(
         address a,
         uint256 skillId,
         uint8 level,
         uint256 score
+    ) internal returns (bytes memory) {
+        uint256 deadline = block.timestamp + 1 hours;
+        bytes32 nonce = keccak256(abi.encodePacked(a, skillId, level, score, block.timestamp, gasleft()));
+        _sigDeadline = deadline;
+        _sigNonce    = nonce;
+        bytes32 payload = keccak256(abi.encodePacked(
+            a, skillId, level, score, deadline, nonce, block.chainid, address(market)
+        ));
+        bytes32 ethHash = keccak256(
+            abi.encodePacked("\x19Ethereum Signed Message:\n32", payload)
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifierPk, ethHash);
+        return abi.encodePacked(r, s, v);
+    }
+
+    /// @dev Sign with explicit deadline + nonce (for expiry / replay tests).
+    function _signCompletionWith(
+        address a,
+        uint256 skillId,
+        uint8 level,
+        uint256 score,
+        uint256 deadline,
+        bytes32 nonce
     ) internal view returns (bytes memory) {
         bytes32 payload = keccak256(abi.encodePacked(
-            a, skillId, level, score, block.chainid, address(market)
+            a, skillId, level, score, deadline, nonce, block.chainid, address(market)
         ));
         bytes32 ethHash = keccak256(
             abi.encodePacked("\x19Ethereum Signed Message:\n32", payload)
@@ -324,7 +354,7 @@ contract SkillMarketplaceTest is Test {
 
         bytes memory sig = _signCompletion(agent, skillId, 2, 85);
         vm.prank(agent);
-        market.completeSkill(skillId, 2, 85, sig);
+        market.completeSkill(skillId, 2, 85, _sigDeadline, _sigNonce, sig);
 
         assertTrue(market.hasCompleted(agent, skillId));
         assertTrue(cred.hasSkill(agent, skillId));
@@ -366,7 +396,7 @@ contract SkillMarketplaceTest is Test {
 
         bytes memory sig = _signCompletion(agent, skillId, 1, 70);
         vm.prank(agent);
-        market.completeSkill(skillId, 1, 70, sig);
+        market.completeSkill(skillId, 1, 70, _sigDeadline, _sigNonce, sig);
 
         assertTrue(cred.hasSkill(agent, skillId));
     }
@@ -412,7 +442,7 @@ contract SkillMarketplaceTest is Test {
 
         address relayer = address(0xBEEF);
         vm.prank(relayer);
-        market.completeSkillFor(agent, skillId, 2, 85, sig);
+        market.completeSkillFor(agent, skillId, 2, 85, _sigDeadline, _sigNonce, sig);
 
         assertTrue(market.hasCompleted(agent, skillId));
         assertTrue(cred.hasSkill(agent, skillId));
@@ -425,7 +455,7 @@ contract SkillMarketplaceTest is Test {
         uint256 skillId = _createSkill(PRICE_ETH, 0);
         bytes memory sig = _signCompletion(address(0), skillId, 2, 85);
         vm.expectRevert(SkillAI__ZeroAddress.selector);
-        market.completeSkillFor(address(0), skillId, 2, 85, sig);
+        market.completeSkillFor(address(0), skillId, 2, 85, _sigDeadline, _sigNonce, sig);
     }
 
     function test_CompleteFor_SignatureBoundToAgent() public {
@@ -443,7 +473,7 @@ contract SkillMarketplaceTest is Test {
 
         // Submitting agent's signature against otherAgent's purchase MUST revert
         vm.expectRevert(SkillAI__InvalidSignature.selector);
-        market.completeSkillFor(otherAgent, skillId, 2, 85, sigForAgent);
+        market.completeSkillFor(otherAgent, skillId, 2, 85, _sigDeadline, _sigNonce, sigForAgent);
     }
 
     function test_Complete_SplitsUsdc() public {
@@ -454,7 +484,7 @@ contract SkillMarketplaceTest is Test {
 
         bytes memory sig = _signCompletion(agent, skillId, 3, 99);
         vm.prank(agent);
-        market.completeSkill(skillId, 3, 99, sig);
+        market.completeSkill(skillId, 3, 99, _sigDeadline, _sigNonce, sig);
 
         assertEq(usdc.balanceOf(creator), (PRICE_USDC * 7000) / 10000);
         assertEq(usdc.balanceOf(address(treasury)), PRICE_USDC - (PRICE_USDC * 7000) / 10000);
@@ -465,8 +495,10 @@ contract SkillMarketplaceTest is Test {
         vm.prank(agent); market.purchaseSkill{value: PRICE_ETH}(skillId);
 
         // Sign with wrong key
+        uint256 dl = block.timestamp + 1 hours;
+        bytes32 nonce = keccak256("badsig-nonce");
         bytes32 payload = keccak256(abi.encodePacked(
-            agent, skillId, uint8(2), uint256(85), block.chainid, address(market)
+            agent, skillId, uint8(2), uint256(85), dl, nonce, block.chainid, address(market)
         ));
         bytes32 ethHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", payload));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(0xDEADBEEF, ethHash);
@@ -474,7 +506,45 @@ contract SkillMarketplaceTest is Test {
 
         vm.prank(agent);
         vm.expectRevert(SkillAI__InvalidSignature.selector);
-        market.completeSkill(skillId, 2, 85, badSig);
+        market.completeSkill(skillId, 2, 85, dl, nonce, badSig);
+    }
+
+    function test_Complete_RevertsOnExpiredDeadline() public {
+        uint256 skillId = _createSkill(PRICE_ETH, 0);
+        vm.prank(agent); market.purchaseSkill{value: PRICE_ETH}(skillId);
+
+        uint256 dl = block.timestamp + 10 minutes;
+        bytes32 nonce = keccak256("expiry-nonce");
+        bytes memory sig = _signCompletionWith(agent, skillId, 2, 85, dl, nonce);
+
+        // Warp past the deadline — the authorization is now stale.
+        vm.warp(dl + 1);
+
+        vm.prank(agent);
+        vm.expectRevert(abi.encodeWithSelector(SkillAI__SignatureExpired.selector, dl));
+        market.completeSkill(skillId, 2, 85, dl, nonce, sig);
+    }
+
+    function test_Complete_RevertsOnReusedNonce() public {
+        // Two separate skills, same nonce: the second redemption must revert
+        // even though the (agent, skillId) pair differs — the nonce is global.
+        uint256 skillA = _createSkill(PRICE_ETH, 0);
+        uint256 skillB = _createSkill(PRICE_ETH, 0);
+        vm.prank(agent); market.purchaseSkill{value: PRICE_ETH}(skillA);
+        vm.prank(agent); market.purchaseSkill{value: PRICE_ETH}(skillB);
+
+        uint256 dl = block.timestamp + 1 hours;
+        bytes32 nonce = keccak256("shared-nonce");
+
+        bytes memory sigA = _signCompletionWith(agent, skillA, 2, 85, dl, nonce);
+        vm.prank(agent);
+        market.completeSkill(skillA, 2, 85, dl, nonce, sigA);
+        assertTrue(market.usedCompletionNonce(nonce));
+
+        bytes memory sigB = _signCompletionWith(agent, skillB, 2, 85, dl, nonce);
+        vm.prank(agent);
+        vm.expectRevert(abi.encodeWithSelector(SkillAI__NonceAlreadyUsed.selector, nonce));
+        market.completeSkill(skillB, 2, 85, dl, nonce, sigB);
     }
 
     function test_Complete_RevertsIfNotPurchased() public {
@@ -484,20 +554,20 @@ contract SkillMarketplaceTest is Test {
         vm.expectRevert(abi.encodeWithSelector(
             SkillAI__PurchaseNotFound.selector, agent, skillId
         ));
-        market.completeSkill(skillId, 1, 50, sig);
+        market.completeSkill(skillId, 1, 50, _sigDeadline, _sigNonce, sig);
     }
 
     function test_Complete_RevertsIfAlreadyCompleted() public {
         uint256 skillId = _createSkill(PRICE_ETH, 0);
         vm.prank(agent); market.purchaseSkill{value: PRICE_ETH}(skillId);
         bytes memory sig = _signCompletion(agent, skillId, 2, 85);
-        vm.prank(agent); market.completeSkill(skillId, 2, 85, sig);
+        vm.prank(agent); market.completeSkill(skillId, 2, 85, _sigDeadline, _sigNonce, sig);
 
         vm.prank(agent);
         vm.expectRevert(abi.encodeWithSelector(
             SkillAI__AlreadyCompleted.selector, agent, skillId
         ));
-        market.completeSkill(skillId, 2, 85, sig);
+        market.completeSkill(skillId, 2, 85, _sigDeadline, _sigNonce, sig);
     }
 
     function test_Complete_RevertsOnInvalidLevel() public {
@@ -507,7 +577,7 @@ contract SkillMarketplaceTest is Test {
         bytes memory sig = _signCompletion(agent, skillId, 4, 85);
         vm.prank(agent);
         vm.expectRevert(abi.encodeWithSelector(SkillAI__InvalidLevel.selector, uint8(4)));
-        market.completeSkill(skillId, 4, 85, sig);
+        market.completeSkill(skillId, 4, 85, _sigDeadline, _sigNonce, sig);
     }
 
     // =========================================================================
@@ -545,7 +615,7 @@ contract SkillMarketplaceTest is Test {
         uint256 skillId = _createSkill(PRICE_ETH, 0);
         vm.prank(agent); market.purchaseSkill{value: PRICE_ETH}(skillId);
         bytes memory sig = _signCompletion(agent, skillId, 2, 85);
-        vm.prank(agent); market.completeSkill(skillId, 2, 85, sig);
+        vm.prank(agent); market.completeSkill(skillId, 2, 85, _sigDeadline, _sigNonce, sig);
 
         vm.warp(block.timestamp + 30 days + 1);
         vm.prank(agent);
@@ -584,7 +654,7 @@ contract SkillMarketplaceTest is Test {
         uint256 skillId = _createSkill(PRICE_ETH, 0);
         vm.prank(agent); market.purchaseSkill{value: PRICE_ETH}(skillId);
         bytes memory sig = _signCompletion(agent, skillId, 2, 85);
-        vm.prank(agent); market.completeSkill(skillId, 2, 85, sig);
+        vm.prank(agent); market.completeSkill(skillId, 2, 85, _sigDeadline, _sigNonce, sig);
 
         vm.prank(agent);
         market.rateSkill(skillId, 5);
@@ -596,7 +666,7 @@ contract SkillMarketplaceTest is Test {
         uint256 skillId = _createSkill(PRICE_ETH, 0);
         vm.prank(agent); market.purchaseSkill{value: PRICE_ETH}(skillId);
         bytes memory sig = _signCompletion(agent, skillId, 2, 85);
-        vm.prank(agent); market.completeSkill(skillId, 2, 85, sig);
+        vm.prank(agent); market.completeSkill(skillId, 2, 85, _sigDeadline, _sigNonce, sig);
 
         vm.prank(agent); market.rateSkill(skillId, 5);
 
@@ -611,7 +681,7 @@ contract SkillMarketplaceTest is Test {
         uint256 skillId = _createSkill(PRICE_ETH, 0);
         vm.prank(agent); market.purchaseSkill{value: PRICE_ETH}(skillId);
         bytes memory sig = _signCompletion(agent, skillId, 2, 85);
-        vm.prank(agent); market.completeSkill(skillId, 2, 85, sig);
+        vm.prank(agent); market.completeSkill(skillId, 2, 85, _sigDeadline, _sigNonce, sig);
 
         vm.prank(agent);
         vm.expectRevert(abi.encodeWithSelector(SkillAI__InvalidRating.selector, uint8(6)));

@@ -74,6 +74,8 @@ export async function POST(
     skillId,
     verified.level,
     BigInt(verified.score),
+    BigInt(verified.deadline),
+    verified.nonce,
     verified.signature
   );
   if (!relay.ok) {
@@ -83,7 +85,7 @@ export async function POST(
         ok: false,
         reason: relay.reason,
         hint:
-          "Relay failed but the verifier signed a valid completion. You can submit it yourself by calling SkillMarketplace.completeSkill(skillId, level, score, signature) from your wallet.",
+          "Relay failed but the verifier signed a valid completion. You can submit it yourself by calling SkillMarketplace.completeSkill(skillId, level, score, deadline, nonce, signature) from your wallet.",
         verifier: verified,
       },
       { status: 502 }

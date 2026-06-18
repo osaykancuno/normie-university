@@ -197,6 +197,16 @@
         "internalType": "uint256"
       },
       {
+        "name": "deadline",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "nonce",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
         "name": "signature",
         "type": "bytes",
         "internalType": "bytes"
@@ -228,6 +238,16 @@
         "name": "score",
         "type": "uint256",
         "internalType": "uint256"
+      },
+      {
+        "name": "deadline",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "nonce",
+        "type": "bytes32",
+        "internalType": "bytes32"
       },
       {
         "name": "signature",
@@ -922,6 +942,25 @@
     "stateMutability": "view"
   },
   {
+    "type": "function",
+    "name": "usedCompletionNonce",
+    "inputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
     "type": "event",
     "name": "Paused",
     "inputs": [
@@ -1373,6 +1412,17 @@
   },
   {
     "type": "error",
+    "name": "SkillAI__NonceAlreadyUsed",
+    "inputs": [
+      {
+        "name": "nonce",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "SkillAI__NotCompleted",
     "inputs": [
       {
@@ -1420,6 +1470,17 @@
     "inputs": [
       {
         "name": "availableAt",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SkillAI__SignatureExpired",
+    "inputs": [
+      {
+        "name": "deadline",
         "type": "uint256",
         "internalType": "uint256"
       }

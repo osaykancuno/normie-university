@@ -160,22 +160,34 @@ export function useCompleteSkill() {
   const addr = getAddresses();
   const { writeContract, writeContractAsync, data, isPending, error } = useWriteContract();
 
-  const completeSkill = (skillId: bigint, level: number, score: bigint, signature: `0x${string}`) =>
+  const completeSkill = (
+    skillId: bigint,
+    level: number,
+    score: bigint,
+    deadline: bigint,
+    nonce: `0x${string}`,
+    signature: `0x${string}`
+  ) =>
     writeContract({
       address: addr.SkillMarketplace,
       abi: SKILL_MARKETPLACE_ABI,
       functionName: "completeSkill",
-      args: [skillId, level, score, signature],
+      args: [skillId, level, score, deadline, nonce, signature],
     });
 
   const completeSkillAsync = (
-    skillId: bigint, level: number, score: bigint, signature: `0x${string}`
+    skillId: bigint,
+    level: number,
+    score: bigint,
+    deadline: bigint,
+    nonce: `0x${string}`,
+    signature: `0x${string}`
   ) =>
     writeContractAsync({
       address: addr.SkillMarketplace,
       abi: SKILL_MARKETPLACE_ABI,
       functionName: "completeSkill",
-      args: [skillId, level, score, signature],
+      args: [skillId, level, score, deadline, nonce, signature],
     });
 
   return { completeSkill, completeSkillAsync, txHash: data, isPending, error };

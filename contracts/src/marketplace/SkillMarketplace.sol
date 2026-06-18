@@ -32,7 +32,9 @@ import {
     SkillAI__UsdcNotSupported,
     SkillAI__UsdcNotConfigured,
     SkillAI__RefundNotReady,
-    SkillAI__WithdrawFailed
+    SkillAI__WithdrawFailed,
+    SkillAI__SignatureExpired,
+    SkillAI__NonceAlreadyUsed
 } from "../libraries/SkillTypes.sol";
 
 /// @title  SkillMarketplace
@@ -105,6 +107,12 @@ contract SkillMarketplace is
 
     /// @notice agent => skillId => has rated?
     mapping(address => mapping(uint256 => bool)) private _hasRated;
+
+    /// @notice Redeemed completion-authorization nonces. Each verifier
+    ///         signature carries a unique nonce; once used it can never be
+    ///         replayed. Combined with the per-signature deadline this gives
+    ///         the oracle anti-replay + anti-stale guarantees.
+    mapping(bytes32 => bool) public usedCompletionNonce;
 
     /// @notice Lifetime revenue sent to the protocol (treasury) in ETH wei
     uint256 public totalProtocolRevenueEth;
@@ -319,9 +327,11 @@ contract SkillMarketplace is
         uint256 skillId,
         uint8 level,
         uint256 score,
+        uint256 deadline,
+        bytes32 nonce,
         bytes calldata signature
     ) external override nonReentrant whenNotPaused {
-        _completeFor(msg.sender, skillId, level, score, signature);
+        _completeFor(msg.sender, skillId, level, score, deadline, nonce, signature);
     }
 
     /// @inheritdoc ISkillMarketplace
@@ -330,10 +340,12 @@ contract SkillMarketplace is
         uint256 skillId,
         uint8 level,
         uint256 score,
+        uint256 deadline,
+        bytes32 nonce,
         bytes calldata signature
     ) external override nonReentrant whenNotPaused {
         if (agent == address(0)) revert SkillAI__ZeroAddress();
-        _completeFor(agent, skillId, level, score, signature);
+        _completeFor(agent, skillId, level, score, deadline, nonce, signature);
     }
 
     function _completeFor(
@@ -341,6 +353,8 @@ contract SkillMarketplace is
         uint256 skillId,
         uint8 level,
         uint256 score,
+        uint256 deadline,
+        bytes32 nonce,
         bytes calldata signature
     ) internal {
         SkillTypes.Purchase storage p = _purchases[agent][skillId];
@@ -350,14 +364,23 @@ contract SkillMarketplace is
         if (level < 1 || level > 3) revert SkillAI__InvalidLevel(level);
         if (score > 100) revert SkillAI__InvalidScore(score);
 
-        // Verify signature: signed(agent, skillId, level, score, chainId, marketplace).
-        // The verifier signature binds the agent address, so msg.sender is irrelevant.
+        // Anti-stale: the verifier-issued authorization must still be valid.
+        if (block.timestamp > deadline) revert SkillAI__SignatureExpired(deadline);
+        // Anti-replay: each authorization nonce is single-use.
+        if (usedCompletionNonce[nonce]) revert SkillAI__NonceAlreadyUsed(nonce);
+
+        // Verify signature over (agent, skillId, level, score, deadline, nonce,
+        // chainId, marketplace). Binding chainId + this address prevents
+        // cross-chain / cross-contract replay; deadline + nonce prevent
+        // stale-redemption + replay on this contract. The signature binds the
+        // agent, so msg.sender is irrelevant (enables relayed completion).
         bytes32 payload = keccak256(
-            abi.encodePacked(agent, skillId, level, score, block.chainid, address(this))
+            abi.encodePacked(agent, skillId, level, score, deadline, nonce, block.chainid, address(this))
         );
         address signer = payload.toEthSignedMessageHash().recover(signature);
         if (!hasRole(VERIFIER_ROLE, signer)) revert SkillAI__InvalidSignature();
 
+        usedCompletionNonce[nonce] = true;
         p.completed = true;
 
         // Mint the Soulbound credential to the agent

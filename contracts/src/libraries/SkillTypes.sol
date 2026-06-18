@@ -169,3 +169,7 @@ error SkillAI__PathNotFound(uint256 pathId);
 error SkillAI__PathNotActive(uint256 pathId);
 error SkillAI__PathEmpty();
 error SkillAI__InvalidDiscount(uint16 bps);
+/// @notice Completion authorization is past its deadline.
+error SkillAI__SignatureExpired(uint256 deadline);
+/// @notice Completion authorization nonce has already been redeemed.
+error SkillAI__NonceAlreadyUsed(bytes32 nonce);

@@ -1,14 +1,21 @@
-/// @file verifier.ts (server)
-/// @notice Auto-verifier MVP for NORMIE UNIVERSITY completion proofs.
+/// @file verifier.ts (server) — the NORMIE UNIVERSITY skills oracle.
 ///
-///         For each skill we declare a verification rule. The endpoint
-///         /api/verify takes (agent, skillId, optional proof), evaluates the
-///         rule on-chain, and — if it passes — returns an EIP-191 signed
-///         completion authorization the agent can submit to
-///         SkillMarketplace.completeSkill().
+/// Responsibilities:
+///   1. Load the canonical, IPFS-pinned skill module for a skillId.
+///   2. Verify the agent's execution on the chain the module DECLARES
+///      (not the chain the marketplace lives on) against the addresses /
+///      selectors the module DECLARES (not values hardcoded here).
+///   3. On success, return an EIP-191 completion authorization carrying a
+///      DEADLINE + NONCE so it can't be replayed or redeemed stale.
 ///
-///         Rules are intentionally conservative. Any skill not in the rule
-///         table requires a manual verifier (admin signs via dashboard).
+/// Two distinct chains are in play:
+///   • verification chain — where the skill ran (module.chain.id). Picked via
+///     getProviderForChain(). This is the structural fix for the old bug
+///     where the oracle always queried the settlement chain (Sepolia) and so
+///     could never see a real mainnet execution.
+///   • settlement chain   — where SkillMarketplace lives (ACTIVE_CHAIN). The
+///     signature binds to it + the marketplace address so it can only be
+///     redeemed there.
 
 import "server-only";
 import {
@@ -16,18 +23,23 @@ import {
   hashMessage,
   hexToBytes,
   keccak256,
+  toHex,
   type Address,
   type Hex,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
-import {
-  AGENT_REGISTRY_ABI,
-  SKILL_CREDENTIAL_ABI,
-  getAddresses,
-} from "@/lib/contracts";
+import { getAddresses } from "@/lib/contracts";
 import { ACTIVE_CHAIN } from "@/config/chains";
-import { getPublicClient } from "./viem";
+import { getProviderForChain, explorerFor } from "./chains-rpc";
+import {
+  loadSkillModule,
+  tierFromDifficulty,
+  declaredAddresses,
+  declaredSelectors,
+  verificationChainId,
+  type SkillModule,
+} from "./skill-module-loader";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -36,7 +48,7 @@ import { getPublicClient } from "./viem";
 export type VerifyRequest = {
   agent: Address;
   skillId: bigint;
-  txHash?: Hex; // optional, used by tx-receipt rules
+  txHash?: Hex;
 };
 
 export type VerifyOk = {
@@ -45,9 +57,12 @@ export type VerifyOk = {
   skillId: string;
   level: number;     // 1..3
   score: number;     // 0..100
+  deadline: string;  // unix seconds (stringified for JSON safety)
+  nonce: Hex;        // bytes32
   signature: Hex;
   marketplace: Address;
-  chainId: number;
+  chainId: number;          // settlement chain
+  verificationChainId: number;
 };
 
 export type VerifyFail = {
@@ -62,177 +77,91 @@ type RuleResult =
   | { pass: true; level: number; score: number }
   | { pass: false; reason: string; hint?: string };
 
-/// Use the inferred return type of getPublicClient instead of viem's loose
-/// PublicClient type — the chain-narrowed concrete type is incompatible with
-/// the loose one when crossing module boundaries.
-type Client = ReturnType<typeof getPublicClient>;
-type Rule = (client: Client, req: VerifyRequest) => Promise<RuleResult>;
-
 // ---------------------------------------------------------------------------
-// Rule registry — keyed by skillId
+// Spec-driven on-chain verification (works for ANY smart_contract_interaction)
 // ---------------------------------------------------------------------------
 
-/// Skill 5 — ERC-8004 Agent Registration. Self-verifying: passes if the agent
-/// is registered on AgentRegistry.
-const ruleErc8004Registration: Rule = async (client, req) => {
-  const addr = getAddresses();
-  const isRegistered = (await client.readContract({
-    address: addr.AgentRegistry,
-    abi: AGENT_REGISTRY_ABI,
-    functionName: "isRegistered",
-    args: [req.agent],
-  })) as boolean;
-
-  if (!isRegistered) {
-    return {
-      pass: false,
-      reason: "Agent is not registered on AgentRegistry",
-      hint: "Call registerAgent('ipfs://...') first.",
-    };
-  }
-  return { pass: true, level: 1, score: 70 };
-};
-
-/// Skill 1 — Uniswap V3 Swap. Pass if the agent has emitted a Swap event from
-/// SwapRouter02 in a tx the agent submitted. txHash required.
-const ruleUniswapV3Swap: Rule = async (client, req) => {
-  if (!req.txHash) {
-    return {
-      pass: false,
-      reason: "txHash required for Uniswap V3 swap verification",
-      hint: "Submit { txHash } pointing to your swap.",
-    };
-  }
-  const SWAP_ROUTER02 = "0x2626664c2603336E57B271c5C0b26F421741e481".toLowerCase();
-  // Uniswap V3 Pool Swap event topic
-  const SWAP_EVENT_TOPIC =
-    "0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67";
-
-  const receipt = await client.getTransactionReceipt({ hash: req.txHash });
-  if (receipt.status !== "success") {
-    return { pass: false, reason: "Transaction reverted on-chain" };
-  }
-  if (receipt.from.toLowerCase() !== req.agent.toLowerCase()) {
-    return {
-      pass: false,
-      reason: "Transaction was not sent by the claimed agent",
-    };
-  }
-  const tx = await client.getTransaction({ hash: req.txHash });
-  if (!tx.to || tx.to.toLowerCase() !== SWAP_ROUTER02) {
-    return {
-      pass: false,
-      reason: `Transaction was not sent to SwapRouter02 (${SWAP_ROUTER02})`,
-    };
-  }
-  const swapped = receipt.logs.some((l) =>
-    l.topics[0]?.toLowerCase() === SWAP_EVENT_TOPIC
-  );
-  if (!swapped) {
-    return {
-      pass: false,
-      reason: "No Uniswap V3 Swap event found in transaction logs",
-    };
-  }
-  return { pass: true, level: 2, score: 80 };
-};
-
-/// Skill 9 — ERC-721 Mint. Pass if the agent received a Transfer(from=0,to=agent)
-/// event in the supplied tx.
-const ruleErc721Mint: Rule = async (client, req) => {
-  if (!req.txHash) {
-    return {
-      pass: false,
-      reason: "txHash required for ERC-721 mint verification",
-    };
-  }
-  const TRANSFER_TOPIC =
-    "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
-  const receipt = await client.getTransactionReceipt({ hash: req.txHash });
-  if (receipt.status !== "success") {
-    return { pass: false, reason: "Transaction reverted on-chain" };
-  }
-  // Padded zero from-address: 32 bytes of 0
-  const ZERO32 =
-    "0x0000000000000000000000000000000000000000000000000000000000000000";
-  const padded = ("0x" + req.agent.slice(2).toLowerCase().padStart(64, "0")) as Hex;
-  const minted = receipt.logs.some(
-    (l) =>
-      l.topics[0]?.toLowerCase() === TRANSFER_TOPIC &&
-      l.topics.length === 4 && // ERC-721 has 3 indexed params + topic0
-      l.topics[1]?.toLowerCase() === ZERO32 &&
-      l.topics[2]?.toLowerCase() === padded
-  );
-  if (!minted) {
-    return {
-      pass: false,
-      reason: "No ERC-721 mint Transfer(from=0, to=agent) event found",
-    };
-  }
-  return { pass: true, level: 1, score: 75 };
-};
-
-// =============================================================================
-// Additional auto-verifier rules — skill modules v2 on Ethereum L1
-// =============================================================================
-
-/// Generic helper: tx receipt was successful, sent by `agent` to `expectedTo`,
-/// and contains at least one log with `topic0 = topic0Hex`.
-async function _checkTxEvent(
-  client: Client,
-  req: VerifyRequest,
-  expectedTo: `0x${string}`,
-  topic0Hex: `0x${string}`
+/// Generic, spec-driven check: the tx (a) succeeded, (b) was sent by the
+/// agent, (c) targeted one of the module's DECLARED contract addresses, and
+/// (d) called one of the module's DECLARED function selectors — all on the
+/// chain the module DECLARES. Level/score derive from the module difficulty.
+async function verifyOnChainCall(
+  mod: SkillModule,
+  req: VerifyRequest
 ): Promise<RuleResult> {
-  if (!req.txHash) return { pass: false, reason: "txHash required" };
-  const receipt = await client.getTransactionReceipt({ hash: req.txHash });
-  if (receipt.status !== "success") return { pass: false, reason: "Transaction reverted" };
+  const chainId = verificationChainId(mod);
+  const client = getProviderForChain(chainId);
+  if (!client) {
+    return {
+      pass: false,
+      reason: `Oracle has no RPC provider for chain ${chainId}`,
+      hint: `Set RPC_URL_${chainId} on the server to enable verification of this skill.`,
+    };
+  }
+  if (!req.txHash) {
+    return {
+      pass: false,
+      reason: "txHash required",
+      hint: `Submit { txHash } of the transaction that performed this skill on chain ${chainId}.`,
+    };
+  }
+
+  let receipt;
+  try {
+    receipt = await client.getTransactionReceipt({ hash: req.txHash });
+  } catch {
+    return {
+      pass: false,
+      reason: `Transaction not found on chain ${chainId}`,
+      hint: `Make sure the tx is on the right chain (${chainId}) and confirmed.`,
+    };
+  }
+  if (receipt.status !== "success") {
+    return { pass: false, reason: "Transaction reverted on-chain" };
+  }
   if (receipt.from.toLowerCase() !== req.agent.toLowerCase()) {
     return { pass: false, reason: "Transaction was not sent by the claimed agent" };
   }
-  const tx = await client.getTransaction({ hash: req.txHash });
-  if (!tx.to || tx.to.toLowerCase() !== expectedTo.toLowerCase()) {
-    return { pass: false, reason: `Transaction was not sent to ${expectedTo}` };
+
+  const addresses = declaredAddresses(mod);
+  if (addresses.length > 0) {
+    const tx = await client.getTransaction({ hash: req.txHash });
+    const to = tx.to?.toLowerCase();
+    if (!to || !addresses.includes(to)) {
+      return {
+        pass: false,
+        reason: "Transaction target is not one of the skill's declared contracts",
+        hint: `Expected one of: ${addresses.join(", ")}`,
+      };
+    }
+    const selectors = declaredSelectors(mod);
+    if (selectors.length > 0) {
+      const selector = (tx.input ?? "0x").slice(0, 10).toLowerCase();
+      if (!selectors.includes(selector)) {
+        return {
+          pass: false,
+          reason: "Transaction did not call one of the skill's declared functions",
+          hint: `Expected a call to one of: ${selectors.join(", ")}`,
+        };
+      }
+    }
   }
-  const has = receipt.logs.some((l) => l.topics[0]?.toLowerCase() === topic0Hex);
-  if (!has) return { pass: false, reason: "Expected event topic not found in tx logs" };
-  return { pass: true, level: 2, score: 80 };
+
+  const { level, score } = tierFromDifficulty(mod.difficulty);
+  return { pass: true, level, score };
 }
 
-/// Skill 2 — Aave V3 Supply.
-const AAVE_V3_POOL = "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2" as `0x${string}`;
-const AAVE_SUPPLY_TOPIC0 =
-  "0x2b627736bca15cd5381dcf80b0bf11fd197d01a037c52b927a881a10fb73ba61" as `0x${string}`;
-const ruleAaveSupply: Rule = async (c, r) => {
-  const res = await _checkTxEvent(c, r, AAVE_V3_POOL, AAVE_SUPPLY_TOPIC0);
-  return res.pass ? { pass: true, level: 1, score: 70 } : res;
-};
+// ---------------------------------------------------------------------------
+// Off-chain rules that aren't a single on-chain tx (kept specific)
+// ---------------------------------------------------------------------------
 
-/// Skill 6 — Safe multisig execTransaction (any Safe proxy emits ExecutionSuccess).
-const SAFE_EXEC_SUCCESS_TOPIC0 =
-  "0x442e715f626346e8c54381002da614f62bee8d27386535b2521ec8540898556e" as `0x${string}`;
-const ruleSafeExec: Rule = async (client, req) => {
-  if (!req.txHash) return { pass: false, reason: "txHash required" };
-  const receipt = await client.getTransactionReceipt({ hash: req.txHash });
-  if (receipt.status !== "success") return { pass: false, reason: "Transaction reverted" };
-  const has = receipt.logs.some(
-    (l) => l.topics[0]?.toLowerCase() === SAFE_EXEC_SUCCESS_TOPIC0
-  );
-  if (!has) return { pass: false, reason: "No Safe ExecutionSuccess event in tx" };
-  return { pass: true, level: 3, score: 85 };
-};
-
-/// Skill 11 — Sushiswap V2 Swap.
-const SUSHI_V2_ROUTER = "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F" as `0x${string}`;
-const UNI_V2_SWAP_TOPIC0 =
-  "0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822" as `0x${string}`;
-const ruleSushiSwap: Rule = async (c, r) => {
-  const res = await _checkTxEvent(c, r, SUSHI_V2_ROUTER, UNI_V2_SWAP_TOPIC0);
-  return res.pass ? { pass: true, level: 2, score: 80 } : res;
-};
-
-/// Skill 13 — Snapshot voting (off-chain attestation via Snapshot Hub).
-const ruleSnapshotVote: Rule = async (_c, req) => {
+/// Snapshot-style governance: pass if the agent cast a Snapshot vote in the
+/// last 7 days. Used by skills whose executable.kind is off_chain_signed_message
+/// and whose category is Governance.
+async function verifySnapshotVote(
+  mod: SkillModule,
+  req: VerifyRequest
+): Promise<RuleResult> {
   try {
     const since = Math.floor(Date.now() / 1000) - 7 * 24 * 3600;
     const url =
@@ -250,28 +179,20 @@ const ruleSnapshotVote: Rule = async (_c, req) => {
     if (votes[0].created < since) {
       return { pass: false, reason: "Latest Snapshot vote is older than 7 days" };
     }
-    return { pass: true, level: 2, score: 75 };
+    const { level, score } = tierFromDifficulty(mod.difficulty);
+    return { pass: true, level, score };
   } catch (e) {
     return { pass: false, reason: e instanceof Error ? e.message : "Snapshot hub unreachable" };
   }
-};
+}
 
-/// Skill 15 — ENS Resolution. Pass if the agent's address has a reverse record.
-const ruleEnsReverse: Rule = async (client, req) => {
-  try {
-    const name = await (client as unknown as {
-      getEnsName: (opts: { address: `0x${string}` }) => Promise<string | null>;
-    }).getEnsName({ address: req.agent });
-    if (!name) return { pass: false, reason: "No ENS reverse record set on this address" };
-    return { pass: true, level: 1, score: 65 };
-  } catch {
-    return { pass: false, reason: "ENS reverse resolution failed" };
-  }
-};
-
-/// Skill 16 — Normies Agent API Integration: agent holds a Normie AND it has
-/// an active ERC-8004 binding via Adapter8004.
-const ruleNormiesIntegration: Rule = async (_c, req) => {
+/// Normies API integration: agent holds a Normie and (bonus) it has an
+/// active ERC-8004 binding. Bound to skills whose category is the Normies
+/// integration family.
+async function verifyNormiesIntegration(
+  mod: SkillModule,
+  req: VerifyRequest
+): Promise<RuleResult> {
   try {
     const NORMIES_API = process.env.NORMIES_API_URL ?? "https://api.normies.art";
     const hRes = await fetch(`${NORMIES_API}/holders/${req.agent}`, {
@@ -283,86 +204,112 @@ const ruleNormiesIntegration: Rule = async (_c, req) => {
     if (!h.tokenIds || h.tokenIds.length === 0) {
       return { pass: false, reason: "Address does not hold any Normie on Ethereum mainnet" };
     }
-    const bRes = await fetch(`${NORMIES_API}/agents/binding/${h.tokenIds[0]}`, {
-      headers: { accept: "application/json" },
-      signal: AbortSignal.timeout(4000),
-    });
-    if (!bRes.ok) return { pass: false, reason: `Binding lookup returned ${bRes.status}` };
-    const b = (await bRes.json()) as { bound?: boolean; agentId?: string };
-    const fullyBound = !!b.bound && !!b.agentId && b.agentId !== "0";
-    return { pass: true, level: 2, score: fullyBound ? 80 : 70 };
+    const { level } = tierFromDifficulty(mod.difficulty);
+    return { pass: true, level, score: 80 };
   } catch (e) {
     return { pass: false, reason: e instanceof Error ? e.message : "Normies API unreachable" };
   }
-};
-
-// =============================================================================
-// Rule registry — 10 auto-verifiable, 6 manual-with-SLA
-// =============================================================================
-
-const RULES: Record<string, Rule> = {
-  "1":  ruleUniswapV3Swap,
-  "2":  ruleAaveSupply,
-  "5":  ruleErc8004Registration,
-  "6":  ruleSafeExec,
-  "9":  ruleErc721Mint,
-  "11": ruleSushiSwap,
-  "13": ruleSnapshotVote,
-  "15": ruleEnsReverse,
-  "16": ruleNormiesIntegration,
-};
-
-/// Skills that intentionally require manual SLA-based review.
-const MANUAL_HINT: Record<string, string> = {
-  "3":  "ERC-20 Permit: submit { txHash } of a tx that called permit() then a downstream transferFrom. Manual review confirms signature was valid and within bounds. SLA 72h.",
-  "4":  "x402 / EIP-3009 USDC Payment: validator audits USDC.AuthorizationUsed event with authorizer = agent. SLA 24h via merchant relay.",
-  "7":  "MEV Protection: behavioural. Submit 3 recent swap tx hashes; verifier confirms private-relay submission + tight slippage discipline. SLA 72h.",
-  "8":  "Cross-Chain Skill Purchase: completes automatically when the bridge adapter delivers the SkillPurchased event on L1. No manual action needed if you used the LayerZero path.",
-  "10": "EIP-2981 Royalty Enforcement: submit a sale tx where both ERC-721 Transfer and royalty payment occurred atomically. SLA 48h.",
-  "12": "Cross-DEX Arbitrage: submit a tx with FlashLoan + at least 2 Swap events on different routers + positive net PnL. SLA 48h.",
-  "14": "ZK Proof Verification: submit { txHash, verifierAddress, circuitName }. Verifier confirms verifyProof returned true for a known-good circuit. SLA 72h.",
-};
+}
 
 // ---------------------------------------------------------------------------
-// Signature
+// Router: pick the verification strategy from the module's declared shape
 // ---------------------------------------------------------------------------
 
-/// Build the EIP-191 message hash bound to the marketplace + chain.
+/// Skill names/categories that get a dedicated off-chain check rather than the
+/// generic on-chain one. Matched case-insensitively on the module name.
+function pickOffChainRule(
+  mod: SkillModule
+): ((m: SkillModule, r: VerifyRequest) => Promise<RuleResult>) | null {
+  const name = (mod.name ?? "").toLowerCase();
+  if (name.includes("snapshot") || name.includes("dao") || name.includes("voting")) {
+    return verifySnapshotVote;
+  }
+  if (name.includes("normies")) {
+    return verifyNormiesIntegration;
+  }
+  return null;
+}
+
+async function evaluate(mod: SkillModule, req: VerifyRequest): Promise<RuleResult> {
+  if (mod.verification?.auto_verifiable === false) {
+    return {
+      pass: false,
+      reason: "This skill requires manual review",
+      hint:
+        mod.verification?.criteria ??
+        "A human validator reviews this completion within the declared SLA.",
+    };
+  }
+
+  const kind = mod.executable?.kind ?? "";
+
+  // Off-chain attestations (governance votes, API integrations) get a
+  // dedicated check; everything contract-based goes through the generic
+  // spec-driven on-chain verifier.
+  const offChain = pickOffChainRule(mod);
+  if (offChain && kind !== "smart_contract_interaction") {
+    return offChain(mod, req);
+  }
+  if (kind === "smart_contract_interaction") {
+    return verifyOnChainCall(mod, req);
+  }
+  if (offChain) {
+    return offChain(mod, req);
+  }
+
+  // intent_submission / rpc_submission / hub_broadcast / off_chain_service:
+  // need a solver/relay/endpoint confirmation we can't do synchronously.
+  return {
+    pass: false,
+    reason: `Skill kind '${kind || "unknown"}' is not auto-verifiable yet`,
+    hint:
+      mod.verification?.criteria ??
+      "This skill is verified by a human validator within the declared SLA.",
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Signature — EIP-191 over (agent, skillId, level, score, deadline, nonce,
+//             settlementChainId, marketplace). Deadline + nonce are the
+//             anti-replay / anti-stale protection consumed by the contract.
+// ---------------------------------------------------------------------------
+
 function buildPayload(
   agent: Address,
   skillId: bigint,
   level: number,
   score: number,
-  marketplace: Address,
-  chainId: number
+  deadline: bigint,
+  nonce: Hex,
+  settlementChainId: number,
+  marketplace: Address
 ): Hex {
-  const inner = keccak256(
+  return keccak256(
     encodePacked(
-      ["address", "uint256", "uint8", "uint256", "uint256", "address"],
-      [agent, skillId, level, BigInt(score), BigInt(chainId), marketplace]
+      ["address", "uint256", "uint8", "uint256", "uint256", "bytes32", "uint256", "address"],
+      [agent, skillId, level, BigInt(score), deadline, nonce, BigInt(settlementChainId), marketplace]
     )
   );
-  return inner;
+}
+
+function freshNonce(agent: Address, skillId: bigint): Hex {
+  // Unique per call. Binds agent+skill+time+randomness; the contract only
+  // checks it hasn't been used, so collision-resistance is all we need.
+  const rand = crypto.getRandomValues(new Uint8Array(16));
+  return keccak256(
+    encodePacked(
+      ["address", "uint256", "uint256", "bytes"],
+      [agent, skillId, BigInt(Date.now()), toHex(rand)]
+    )
+  );
 }
 
 async function signCompletion(
-  agent: Address,
-  skillId: bigint,
-  level: number,
-  score: number,
-  marketplace: Address,
-  chainId: number,
+  payload: Hex,
   privateKey: Hex
 ): Promise<Hex> {
   const account = privateKeyToAccount(privateKey);
-  const payload = buildPayload(agent, skillId, level, score, marketplace, chainId);
-  // hashMessage applies the EIP-191 "\x19Ethereum Signed Message:\n32" prefix
-  // and returns the digest. Sign that digest by re-applying signMessage on the
-  // raw 32-byte payload. viem's signMessage with `raw` does the prefix for us.
-  const signature = await account.signMessage({
-    message: { raw: hexToBytes(payload) },
-  });
-  return signature;
+  return account.signMessage({ message: { raw: hexToBytes(payload) } });
 }
 
 // ---------------------------------------------------------------------------
@@ -373,6 +320,10 @@ export function isVerifierConfigured(): boolean {
   return !!process.env.VERIFIER_PRIVATE_KEY;
 }
 
+/// How long a completion authorization stays valid. Short — the agent (or the
+/// relayer) should redeem promptly. Configurable via env.
+const COMPLETION_TTL_SECONDS = Number(process.env.COMPLETION_TTL_SECONDS ?? "1800"); // 30 min
+
 export async function verifySkillCompletion(
   req: VerifyRequest
 ): Promise<VerifyResult> {
@@ -380,56 +331,62 @@ export async function verifySkillCompletion(
   if (!pk) {
     return {
       ok: false,
-      reason:
-        "Verifier is not configured on this server. Set VERIFIER_PRIVATE_KEY.",
+      reason: "Verifier is not configured on this server. Set VERIFIER_PRIVATE_KEY.",
     };
   }
 
-  const skillIdKey = req.skillId.toString();
-  const rule = RULES[skillIdKey];
-  if (!rule) {
+  const mod = await loadSkillModule(req.skillId);
+  if (!mod) {
     return {
       ok: false,
-      reason: `Skill #${skillIdKey} requires manual verification`,
-      hint: MANUAL_HINT[skillIdKey] ??
-        "This skill is not yet in the auto-verifier rule table.",
+      reason: `Skill #${req.skillId.toString()} has no resolvable module (IPFS content unavailable)`,
+      hint: "The skill's contentURI could not be fetched from any IPFS gateway. Try again shortly.",
     };
   }
 
-  const client = getPublicClient();
-  const ruleResult = await rule(client, req);
+  const ruleResult = await evaluate(mod, req);
   if (!ruleResult.pass) {
     return { ok: false, reason: ruleResult.reason, hint: ruleResult.hint };
   }
 
   const addr = getAddresses();
   const marketplace = addr.SkillMarketplace;
-  const chainId = ACTIVE_CHAIN.id;
+  const settlementChainId = ACTIVE_CHAIN.id;
+  const verChainId = verificationChainId(mod);
 
-  const signature = await signCompletion(
+  const deadline = BigInt(Math.floor(Date.now() / 1000) + COMPLETION_TTL_SECONDS);
+  const nonce = freshNonce(req.agent, req.skillId);
+
+  const payload = buildPayload(
     req.agent,
     req.skillId,
     ruleResult.level,
     ruleResult.score,
-    marketplace,
-    chainId,
-    pk
+    deadline,
+    nonce,
+    settlementChainId,
+    marketplace
   );
+  const signature = await signCompletion(payload, pk);
 
   return {
     ok: true,
     agent: req.agent,
-    skillId: skillIdKey,
+    skillId: req.skillId.toString(),
     level: ruleResult.level,
     score: ruleResult.score,
+    deadline: deadline.toString(),
+    nonce,
     signature,
     marketplace,
-    chainId,
+    chainId: settlementChainId,
+    verificationChainId: verChainId,
   };
 }
 
-/// Public for testing: same hashing the contract uses.
+/// Exposed for tests: same hashing the contract uses.
 export const _internals = {
   buildPayload,
   hashMessage,
+  explorerFor,
 };
