@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check:drift": "node scripts/check-skill-oracle-drift.mjs",
+    "check:drift:onchain": "node scripts/check-skill-oracle-drift.mjs --onchain"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",

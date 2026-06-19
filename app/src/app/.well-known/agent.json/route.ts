@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
       USDC: addr.USDC,
     },
     endpoints: {
+      health:       `${origin}/api/health`,
       stats:        `${origin}/api/stats`,
       catalogue:    `${origin}/api/skills`,
       skill:        `${origin}/api/skills/{id}`,

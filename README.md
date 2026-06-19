@@ -126,14 +126,14 @@ Full runbook: [`docs/deploy.md`](./docs/deploy.md).
 
 ## Trust model — what we guarantee and what we don't
 
-A skill marketplace is only useful if the skills actually work in mainnet. We have FOUR layers of quality assurance today, and THREE honest gaps we're transparent about. Both grow the credibility — the second more than the first.
+A skill marketplace is only useful if the skills actually work in mainnet. We have SIX layers of quality assurance today, and THREE honest gaps we're transparent about. Both grow the credibility — the second more than the first.
 
 ### What we guarantee today
 
 | Layer | Coverage | What it proves |
 |---|---|---|
 | **1. Canonical contract addresses** | every skill | Skill module declares the exact contract address, ABI fragment, and function selector for the chain it targets. Verifiable against published protocol deployment docs. |
-| **2. Chain-aware, spec-driven oracle** | every smart-contract skill | On a completion tx, the oracle loads the IPFS skill module, reads the tx **on the chain the module declares**, and asserts the call hit a **declared contract** with a **declared selector**. On pass it signs an authorization (deadline + single-use nonce) redeemable **only** through the marketplace — anti-stale, anti-replay. |
+| **2. Chain-aware, spec-driven oracle (fail-closed)** | every smart-contract skill | On a completion tx, the oracle loads the IPFS skill module, reads the tx **on the chain the module declares**, and asserts the call hit a **declared contract** with a **declared selector**. A skill that declares no usable target is **never auto-passed** — it routes to human/validator review (absence of a constraint is not "accept everything"). On pass it signs an authorization (deadline + single-use nonce) redeemable **only** through the marketplace — anti-stale, anti-replay. |
 | **3. ERC-8004 validation layer** | live | The `ValidationRegistry` is wired and functional: independent validators (VALIDATOR_ROLE) attest a 0-100 quality score per execution via `/api/validation/attest`. `ReputationEngine` blends those scores into the on-chain reputation. Not dead code — verified end-to-end on Sepolia. |
 | **4. Single-source on-chain reputation** | live | `ReputationEngine` exposes a permissionlessly-readable 5-factor score (skills, avg level, category diversity, tenure, verification+validation). The UI shows exactly this number; any external protocol reproduces it on-chain. |
 | **5. On-chain anchor (2-of-2)** | live | Each epoch, `PixelOracleAnchor` commits ONE Merkle state root binding every credential + reputation, gated by a **two-of-two** EIP-712 co-signature (University + Oracle). No single key can forge a checkpoint. SHA-256 leaves make off-chain and on-chain verification bit-identical — proven end-to-end on Sepolia (`verifyCredential` returns true for valid proofs, false for tampered). |
@@ -145,9 +145,9 @@ We declare these openly because hiding them would hurt credibility more than ack
 
 | Gap | Status today | Fix |
 |---|---|---|
-| **No mainnet-fork CI** | Skills work because we hand-tested them on mainnet during development. But if Uniswap V3 deprecates tomorrow, our skill #1 breaks silently. | **Q3 2026**: Foundry weekly fork-test runs against canonical mainnet state. Failing skills auto-deactivate; catalogue shows `⚠ requires re-verification` badge. |
+| **Skill↔oracle drift (partly closed)** | A **CI drift guard** (`npm run check:drift`, in GitHub Actions) now reads every seeded skill's IPFS module and fails the build if any declares a verification spec the oracle cannot service — unsupported chain, malformed address/selector, or (with `--onchain`) an address with no bytecode on its declared chain. What's *not* yet covered: protocol logic changing under a still-valid address (e.g. Uniswap V3 deprecating). | **Q3 2026**: extend the `--onchain` check into a scheduled weekly Foundry mainnet-fork run against canonical state. Failing skills auto-deactivate; catalogue shows `⚠ requires re-verification` badge. |
 | **No skill correctness audit** | Auto-verifier confirms a tx was executed, not that the skill DESIGN is optimal (e.g., we could ship slippage 5% when 0.5% is right). | **Q3 2026**: skill-completion ratings (1-5 stars) collected from agents post-completion. Aggregate score becomes a public badge. Q4: external bounty for proven-broken skills ($200-2000 paid in USDC from treasury). |
-| **Anchor signers not yet diverse-custody** | The anchor needs two-of-two (University + Oracle), which removes the single-key SPOF. But on testnet both keys are operator-held. The *mechanism* is 2-of-2; the *custody* is not yet split across organizations. | **Q1 2027**: move University + Oracle signers to independent HSMs/multisigs held by different parties; open VALIDATOR_ROLE to independent validators with stake + slashing; Sherlock / Spearbit audit on the anchor + top-revenue skills. |
+| **Anchor signers not yet diverse-custody** | The anchor needs two-of-two (University + Oracle), which removes the single-key SPOF. The keys are already **two distinct addresses** — checkpoint submission hard-fails if they collapse to one, and `/api/health` reports `signersDistinct`. But on testnet both are operator-held: the *mechanism* and *distinctness* are enforced; the *custody* is not yet split across organizations. | **Q1 2027**: move University + Oracle signers to independent HSMs/multisigs held by different parties; open VALIDATOR_ROLE to independent validators with stake + slashing; Sherlock / Spearbit audit on the anchor + top-revenue skills. |
 
 ### Why this matters for agents
 

@@ -46,6 +46,27 @@ export function isAnchorConfigured(): boolean {
   );
 }
 
+/// Surface the two anchor signers and whether they are genuinely distinct.
+/// The 2-of-2 checkpoint only protects against a single compromised key if the
+/// University signer and the Oracle signer are DIFFERENT keys (ideally under
+/// diverse custody). If they collapse to one address the co-signature is
+/// theatre — so we expose this for the health endpoint and hard-fail submission.
+export function anchorSignerDiagnostics():
+  | { configured: false }
+  | { configured: true; university: Address; oracle: Address; distinct: boolean } {
+  const uniPk = process.env.UNIVERSITY_SIGNER_PRIVATE_KEY as Hex | undefined;
+  const oraPk = process.env.ORACLE_SIGNER_PRIVATE_KEY as Hex | undefined;
+  if (!uniPk || !oraPk) return { configured: false };
+  const university = privateKeyToAccount(uniPk).address;
+  const oracle = privateKeyToAccount(oraPk).address;
+  return {
+    configured: true,
+    university,
+    oracle,
+    distinct: university.toLowerCase() !== oracle.toLowerCase(),
+  };
+}
+
 function hx(bytes: Uint8Array): Hex {
   return ("0x" + bytesToHex(bytes)) as Hex;
 }
@@ -131,6 +152,15 @@ export async function buildAndSubmitCheckpoint(
   // 2-of-2 EIP-712 co-signature
   const uniAccount = privateKeyToAccount(uniPk);
   const oraAccount = privateKeyToAccount(oraPk);
+  // Hard-fail if the two "independent" signers are the same key: a 2-of-2 that
+  // resolves to one address provides no extra protection over single-key signing.
+  if (uniAccount.address.toLowerCase() === oraAccount.address.toLowerCase()) {
+    return {
+      ok: false,
+      reason:
+        "Anchor signers are identical — 2-of-2 requires two distinct keys (ideally diverse custody)",
+    };
+  }
   const sigParams = {
     domain,
     types: CHECKPOINT_TYPES,

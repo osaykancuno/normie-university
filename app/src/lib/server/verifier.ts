@@ -123,27 +123,40 @@ async function verifyOnChainCall(
     return { pass: false, reason: "Transaction was not sent by the claimed agent" };
   }
 
+  // FAIL-CLOSED: a contract-interaction skill that declares no usable target
+  // address cannot be auto-verified. Without a declared contract, *any*
+  // successful tx from the agent (even a 0-value self-transfer) would otherwise
+  // pass — absence of a constraint must never mean "accept everything". Route
+  // these to the human/validator path instead of rubber-stamping.
   const addresses = declaredAddresses(mod);
-  if (addresses.length > 0) {
-    const tx = await client.getTransaction({ hash: req.txHash });
-    const to = tx.to?.toLowerCase();
-    if (!to || !addresses.includes(to)) {
+  if (addresses.length === 0) {
+    return {
+      pass: false,
+      reason: "This skill has no verifiable on-chain target and needs manual review",
+      hint:
+        mod.verification?.criteria ??
+        "The skill module declares no usable contract address; a human validator confirms this completion.",
+    };
+  }
+
+  const tx = await client.getTransaction({ hash: req.txHash });
+  const to = tx.to?.toLowerCase();
+  if (!to || !addresses.includes(to)) {
+    return {
+      pass: false,
+      reason: "Transaction target is not one of the skill's declared contracts",
+      hint: `Expected one of: ${addresses.join(", ")}`,
+    };
+  }
+  const selectors = declaredSelectors(mod);
+  if (selectors.length > 0) {
+    const selector = (tx.input ?? "0x").slice(0, 10).toLowerCase();
+    if (!selectors.includes(selector)) {
       return {
         pass: false,
-        reason: "Transaction target is not one of the skill's declared contracts",
-        hint: `Expected one of: ${addresses.join(", ")}`,
+        reason: "Transaction did not call one of the skill's declared functions",
+        hint: `Expected a call to one of: ${selectors.join(", ")}`,
       };
-    }
-    const selectors = declaredSelectors(mod);
-    if (selectors.length > 0) {
-      const selector = (tx.input ?? "0x").slice(0, 10).toLowerCase();
-      if (!selectors.includes(selector)) {
-        return {
-          pass: false,
-          reason: "Transaction did not call one of the skill's declared functions",
-          hint: `Expected a call to one of: ${selectors.join(", ")}`,
-        };
-      }
     }
   }
 
