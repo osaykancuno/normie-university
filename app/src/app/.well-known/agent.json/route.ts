@@ -46,6 +46,8 @@ export async function GET(req: NextRequest) {
       buy402:       `${origin}/api/skills/{id}/buy`,
       complete:     `${origin}/api/skills/{id}/complete`,
       verify:       `${origin}/api/verify`,
+      verifyManual: `${origin}/api/verify/manual`,
+      validate:     `${origin}/api/validation/attest`,
       ipfsUpload:   `${origin}/api/ipfs/upload`,
       paths:        `${origin}/api/paths`,
       path:         `${origin}/api/paths/{id}`,
@@ -75,11 +77,12 @@ export async function GET(req: NextRequest) {
       "x402-buy",            // GET /api/skills/:id/buy → 402, POST → settle
       "relayed-purchase",    // server pays gas via RELAYER_PRIVATE_KEY
       "relayed-completion",  // server submits completeSkillFor on agent's behalf
-      "auto-verifier",       // /api/verify signs completions for self-checkable skills
+      "auto-verifier",       // chain-aware, spec-driven oracle signs completions (deadline + nonce)
+      "erc-8004-validation", // ValidationRegistry: independent validators attest, blended into reputation
+      "erc-8004-reputation", // ReputationEngine: 5-factor on-chain score, permissionlessly readable
       "ipfs-pinning",        // /api/ipfs/upload via Pinata
       "erc-8004-identity",   // AgentRegistry compliant
-      "learning-paths",      // curated bundles at a discount via PathRegistry
-      "normies-native",      // pixel-art avatar + community Path + API proxy for Normies holders
+      "normies-native",      // pixel-art avatar + API proxy for Normies holders
     ],
     integrations: {
       normies: {
