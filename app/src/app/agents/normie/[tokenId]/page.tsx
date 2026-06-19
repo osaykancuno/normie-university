@@ -4,6 +4,7 @@ import { use, useMemo } from "react";
 import Link from "next/link";
 import { usePersona, usePersonaPreview, useCanvasFeed, useBurnHistory, useNormie } from "@/hooks/useNormies";
 import { useAgentSkills } from "@/hooks/useCredentials";
+import { usePreviewReputation, TIER_LABELS } from "@/hooks/useReputation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -55,6 +56,10 @@ export default function NormieAgentProfilePage({
   // soulbound to the original purchaser. v2 will use ERC-6551 token-bound
   // accounts so credentials follow the NFT (see Roadmap in README).
   const { data: skillIds } = useAgentSkills(ownerAddr);
+  // Canonical on-chain reputation from ReputationEngine (preview = computed
+  // live without a write). This is the protocol's single source of truth;
+  // the Normies-flavoured composite below is a separate activity display.
+  const { data: repData } = usePreviewReputation(ownerAddr);
 
   const credentials = useMemo(() => {
     const ids = (skillIds as bigint[] | undefined) ?? [];
@@ -214,16 +219,53 @@ export default function NormieAgentProfilePage({
 
         {/* Main column */}
         <main className="space-y-6 lg:col-span-2">
-          {/* Composite reputation */}
-          <div className="border border-line-strong bg-surface p-6">
+          {/* Protocol reputation — the canonical on-chain ReputationEngine score */}
+          {(() => {
+            const r = repData as
+              | { score: bigint; tier: number; skillCount: bigint; avgSkillLevel: bigint; categoryDiversity: bigint; avgVerifyScore: bigint }
+              | undefined;
+            const scoreBps = r ? Number(r.score) : 0;     // 0..10000
+            const scorePct = (scoreBps / 100).toFixed(1); // 0..100
+            const tier = r ? TIER_LABELS[r.tier] ?? "Novice" : "Novice";
+            return (
+              <div className="border border-line-strong bg-surface p-6">
+                <div className="flex items-center justify-between">
+                  <div className="mono text-[10px] uppercase tracking-wider text-ink-muted">
+                    Protocol reputation · on-chain
+                  </div>
+                  <Badge variant="outline">{tier}</Badge>
+                </div>
+                <div className="mt-1 flex items-baseline gap-2">
+                  <span className="text-5xl font-semibold tracking-tight text-ink">{scorePct}</span>
+                  <span className="mono text-sm text-ink-muted">/ 100</span>
+                </div>
+                <p className="mt-1 text-xs text-ink-muted">
+                  Read from <code className="text-ink-soft">ReputationEngine</code> — 30% skills · 25% avg level ·
+                  15% category diversity · 10% tenure · 20% verification &amp; validation score.
+                </p>
+                {r && (
+                  <div className="mt-4 grid grid-cols-4 gap-3 text-xs">
+                    <Stat label="Skills" value={Number(r.skillCount)} />
+                    <Stat label="Avg level" value={(Number(r.avgSkillLevel) / 100).toFixed(1)} />
+                    <Stat label="Categories" value={Number(r.categoryDiversity)} />
+                    <Stat label="Verify score" value={Number(r.avgVerifyScore)} />
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Normies activity index — community-flavoured, NOT the protocol score */}
+          <div className="border border-line bg-surface p-6">
             <div className="mono text-[10px] uppercase tracking-wider text-ink-muted">
-              Combat readiness
+              Normies activity index
             </div>
-            <div className="mt-1 text-5xl font-semibold tracking-tight text-ink">
+            <div className="mt-1 text-3xl font-semibold tracking-tight text-ink-soft">
               {composite}
             </div>
             <p className="mt-1 text-xs text-ink-muted">
-              composite = √( (canvas AP + burn-derived AP) × NORMIE UNIVERSITY credentials ) × 10
+              A community display blending Normies canvas &amp; burn activity with earned credentials:
+              √( (canvas AP + burn-derived AP) × credentials ) × 10. Not the on-chain protocol score above.
             </p>
             <div className="mt-4 grid grid-cols-3 gap-3 text-xs">
               <Stat label="Canvas AP" value={canvasAP} />

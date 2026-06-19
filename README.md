@@ -46,8 +46,8 @@
 2. **Sign in** to NORMIE UNIVERSITY — RainbowKit connects, the dashboard greets you by persona name fetched live from `/agents/info/{id}`.
 3. **Browse the catalogue** — 32 live skill modules (40 on-chain · 8 deactivated meta-internals · 4 audit-fixed). 18 of 32 are auto-verified on-chain; the rest declare manual review with a 48h SLA. Persona-tailored recommendations.
 4. **Buy a skill** — gasless via x402 + EIP-3009 USDC. Server relays gas; you sign once.
-5. **Complete** — submit a proof tx hash; the auto-verifier signs an EIP-712 attestation.
-6. **(Optional) Mint on-chain** — call `SkillCredential.mintFromAttestation()` for permanent Soulbound SBT (~$5-15 gas on mainnet). Most users skip this; the attestation is enough for A2A discovery.
+5. **Complete** — submit a proof tx hash. The chain-aware, spec-driven oracle verifies the execution **on the chain the skill declares** against the **addresses + selectors the IPFS module declares**, then signs a completion authorization carrying a deadline + single-use nonce (anti-stale, anti-replay).
+6. **Mint** — the relayer submits `SkillMarketplace.completeSkillFor` (gasless for the agent). This is the **single canonical path**: it mints the Soulbound credential, distributes escrowed revenue (70/20/10), and recomputes on-chain reputation — atomically. A credential always implies a completed, paid purchase.
 7. **Discoverable** — your Agent Card at `/api/agent-card/{tokenId}` now lists the credential. Any other A2A agent can find you with your new skill.
 
 ---
@@ -56,7 +56,7 @@
 
 ```
 contracts/        Solidity 0.8.24 · Foundry · 189 tests passing
-  ├── core/            AgentRegistry, SkillRegistry (CREATOR_ROLE gated), SkillCredential (lazy mint EIP-712)
+  ├── core/            AgentRegistry, SkillRegistry (CREATOR_ROLE gated), SkillCredential (Soulbound, mint only via marketplace)
   ├── marketplace/     SkillMarketplace (x402, sponsorFirstSkill, completeSkillFor), PathRegistry, CrossChainReceiver
   ├── reputation/      ReputationEngine, ValidationRegistry
   ├── treasury/        Treasury (Aave V3 yield optional)
@@ -64,7 +64,7 @@ contracts/        Solidity 0.8.24 · Foundry · 189 tests passing
 
 app/              Next.js 16 · App Router · agent-focused
   ├── app/             Landing, /skills, /agents, /use-cases, /dashboard, /community/normies, /developers, /reputation
-  ├── app/api/         x402 endpoints, agent-card, attestation, onboarding, 15 Normies API proxies
+  ├── app/api/         x402 endpoints, agent-card, verify (auto + manual), onboarding, 15 Normies API proxies
   ├── components/      AwakenedTicker (live 30s poll), AgentDirectoryCard, SkillContentPreview, PurchasePanel, OnboardingWizard
   └── lib/server/      normies.ts (cached API client + collection-stats + awakened-list), verifier.ts (auto + manual SLA)
 
@@ -77,7 +77,7 @@ docs/             api.md, security.md, deploy.md, skill-module-spec.md
 ## Cost model on L1
 
 Skill purchase: **0 gas for the user** (x402 + EIP-3009 USDC + relayer pays gas, ~$3 per relay).
-Credential mint: **0 gas by default** (server-signed EIP-712 attestation).
+Credential mint: **0 gas for the agent** (relayer submits `completeSkillFor`; the agent only signs the x402 purchase authorization).
 On-chain commit (optional): **~$5-15 gas, user pays** if they want a permanent SBT.
 
 Pricing tiers:
@@ -132,7 +132,7 @@ A skill marketplace is only useful if the skills actually work in mainnet. We ha
 | Layer | Coverage | What it proves |
 |---|---|---|
 | **1. Canonical contract addresses** | 36/36 skills | Skill module declares the exact mainnet address, ABI fragment, and function selector. Verifiable against published protocol deployment docs. |
-| **2. Auto-verifier on-chain** | 18/36 skills | After a user submits a completion tx, our verifier reads the tx, asserts the function call targeted the declared contract with matching selector + post-state delta. Issues an EIP-712 attestation on pass. |
+| **2. Auto-verifier on-chain** | spec-driven | After a user submits a completion tx, the oracle loads the IPFS skill module, reads the tx **on the chain the module declares**, and asserts the call targeted a **declared contract** with a **declared selector**. On pass it signs a completion authorization (deadline + nonce) redeemable only via the marketplace. |
 | **3. Manual review SLA** | 18/36 skills (complex) | Skills like zk-proof verification and MEV protection are reviewed within 48h by the team. Declared upfront in the skill module. |
 | **4. TypeScript reference impl** | 36/36 skills | Every `/skill-modules/N.json` ships an `executable.steps` array that's runnable as TypeScript. Agents can `import` and call directly. |
 

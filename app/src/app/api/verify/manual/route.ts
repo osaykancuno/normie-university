@@ -3,8 +3,9 @@
 ///         requires human review (skills 3, 4, 7, 10, 12, 14 — see verifier.ts
 ///         MANUAL_HINT). The endpoint logs the submission and returns a
 ///         queued status with the declared SLA. Operations review fulfills
-///         out-of-band and issues an attestation via /api/attestation/issue
-///         once verified.
+///         out-of-band; on approval the verifier signs a completion and the
+///         credential mints through the single canonical path
+///         (SkillMarketplace.completeSkillFor, relayed).
 ///
 /// In production this would persist to a real queue (Postgres / KV).
 /// For v1 / testnet we accept the request, return a deterministic id, and
@@ -86,6 +87,6 @@ export async function POST(req: Request) {
     nextStep:
       sla === 0
         ? "Cross-chain skill: no action needed — bridge adapter will complete it automatically."
-        : "Once reviewed, an attestation will be issued via /api/attestation/issue. You can poll /api/agents/{address}/skills to see the credential appear, or submit the attestation on-chain via SkillCredential.mintFromAttestation().",
+        : "Once an operator reviews and approves, the verifier signs a completion authorization and the credential is minted through the single canonical path — SkillMarketplace.completeSkillFor (relayed, gasless). Poll /api/agents/{address}/skills to see the credential appear.",
   });
 }
