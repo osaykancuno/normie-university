@@ -55,18 +55,19 @@
 ## Architecture
 
 ```
-contracts/        Solidity 0.8.24 · Foundry · 189 tests passing
+contracts/        Solidity 0.8.24 · Foundry · 205 tests passing
   ├── core/            AgentRegistry, SkillRegistry (CREATOR_ROLE gated), SkillCredential (Soulbound, mint only via marketplace)
-  ├── marketplace/     SkillMarketplace (x402, sponsorFirstSkill, completeSkillFor), PathRegistry, CrossChainReceiver
-  ├── reputation/      ReputationEngine, ValidationRegistry
+  ├── marketplace/     SkillMarketplace (x402, completeSkillFor w/ deadline+nonce), PathRegistry, CrossChainReceiver
+  ├── reputation/      ReputationEngine (5-factor), ValidationRegistry (ERC-8004, live)
+  ├── anchor/          PixelOracleAnchor (per-epoch 2-of-2 Merkle checkpoint), SkillGate (composable on-chain gating)
   ├── treasury/        Treasury (Aave V3 yield optional)
   └── libraries/       SkillTypes (shared structs, errors)
 
 app/              Next.js 16 · App Router · agent-focused
   ├── app/             Landing, /skills, /agents, /use-cases, /dashboard, /community/normies, /developers, /reputation
-  ├── app/api/         x402 endpoints, agent-card, verify (auto + manual), onboarding, 15 Normies API proxies
-  ├── components/      AwakenedTicker (live 30s poll), AgentDirectoryCard, SkillContentPreview, PurchasePanel, OnboardingWizard
-  └── lib/server/      normies.ts (cached API client + collection-stats + awakened-list), verifier.ts (auto + manual SLA)
+  ├── app/api/         x402, agent-card, verify (auto+manual), validation/attest, anchor/{checkpoint,proof}, 15 Normies proxies
+  ├── components/      AwakenedTicker (live 30s poll), AgentDirectoryCard, SkillContentPreview, PurchasePanel
+  └── lib/server/      normies.ts, verifier.ts (chain-aware spec-driven oracle), validator.ts, anchor-checkpoint.ts, anchor/*
 
 sdk/              @skillai/sdk · agent-friendly TypeScript SDK
 skill-modules/    16 JSON specs · ABI fragments, viem reference implementations, verification rules
@@ -135,6 +136,8 @@ A skill marketplace is only useful if the skills actually work in mainnet. We ha
 | **2. Chain-aware, spec-driven oracle** | every smart-contract skill | On a completion tx, the oracle loads the IPFS skill module, reads the tx **on the chain the module declares**, and asserts the call hit a **declared contract** with a **declared selector**. On pass it signs an authorization (deadline + single-use nonce) redeemable **only** through the marketplace — anti-stale, anti-replay. |
 | **3. ERC-8004 validation layer** | live | The `ValidationRegistry` is wired and functional: independent validators (VALIDATOR_ROLE) attest a 0-100 quality score per execution via `/api/validation/attest`. `ReputationEngine` blends those scores into the on-chain reputation. Not dead code — verified end-to-end on Sepolia. |
 | **4. Single-source on-chain reputation** | live | `ReputationEngine` exposes a permissionlessly-readable 5-factor score (skills, avg level, category diversity, tenure, verification+validation). The UI shows exactly this number; any external protocol reproduces it on-chain. |
+| **5. On-chain anchor (2-of-2)** | live | Each epoch, `PixelOracleAnchor` commits ONE Merkle state root binding every credential + reputation, gated by a **two-of-two** EIP-712 co-signature (University + Oracle). No single key can forge a checkpoint. SHA-256 leaves make off-chain and on-chain verification bit-identical — proven end-to-end on Sepolia (`verifyCredential` returns true for valid proofs, false for tampered). |
+| **6. Composable gating (`SkillGate`)** | live | Any external dApp inherits `SkillGate` and adds `onlyWithSkill(...)` / `onlyWithReputation(...)` — gating a DAO vote, a lending pool, an allowlist on a NORMIE UNIVERSITY credential, verified trustlessly through the anchor in ~25k gas. This is what makes us a *layer*, not an app. |
 
 ### Honest gaps (and the fix-by-quarter roadmap)
 
@@ -144,7 +147,7 @@ We declare these openly because hiding them would hurt credibility more than ack
 |---|---|---|
 | **No mainnet-fork CI** | Skills work because we hand-tested them on mainnet during development. But if Uniswap V3 deprecates tomorrow, our skill #1 breaks silently. | **Q3 2026**: Foundry weekly fork-test runs against canonical mainnet state. Failing skills auto-deactivate; catalogue shows `⚠ requires re-verification` badge. |
 | **No skill correctness audit** | Auto-verifier confirms a tx was executed, not that the skill DESIGN is optimal (e.g., we could ship slippage 5% when 0.5% is right). | **Q3 2026**: skill-completion ratings (1-5 stars) collected from agents post-completion. Aggregate score becomes a public badge. Q4: external bounty for proven-broken skills ($200-2000 paid in USDC from treasury). |
-| **Validator set is not yet decentralized** | The ERC-8004 `ValidationRegistry` is live and reputation-integrated, but the first validator is operator-run. The *mechanism* is trustless; the *validator set* is not yet diverse. | **Q1 2027**: open VALIDATOR_ROLE to independent validators with a stake + slashing model; Sherlock / Spearbit-style audit competition on the top-revenue skills. |
+| **Anchor signers not yet diverse-custody** | The anchor needs two-of-two (University + Oracle), which removes the single-key SPOF. But on testnet both keys are operator-held. The *mechanism* is 2-of-2; the *custody* is not yet split across organizations. | **Q1 2027**: move University + Oracle signers to independent HSMs/multisigs held by different parties; open VALIDATOR_ROLE to independent validators with stake + slashing; Sherlock / Spearbit audit on the anchor + top-revenue skills. |
 
 ### Why this matters for agents
 

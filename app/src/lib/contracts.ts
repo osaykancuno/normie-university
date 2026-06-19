@@ -14,6 +14,7 @@ import TreasuryAbi           from "./abis/Treasury.json";
 import ValidationRegistryAbi from "./abis/ValidationRegistry.json";
 import CrossChainReceiverAbi from "./abis/CrossChainReceiver.json";
 import PathRegistryAbi       from "./abis/PathRegistry.json";
+import PixelOracleAnchorAbi  from "./abis/PixelOracleAnchor.json";
 
 import { ACTIVE_CHAIN } from "@/config/chains";
 
@@ -31,6 +32,7 @@ export const TREASURY_ABI             = TreasuryAbi           as unknown as Abi;
 export const VALIDATION_REGISTRY_ABI  = ValidationRegistryAbi as unknown as Abi;
 export const CROSS_CHAIN_RECEIVER_ABI = CrossChainReceiverAbi as unknown as Abi;
 export const PATH_REGISTRY_ABI        = PathRegistryAbi       as unknown as Abi;
+export const PIXEL_ORACLE_ANCHOR_ABI  = PixelOracleAnchorAbi  as unknown as Abi;
 
 // Minimal USDC ABI for approve / balanceOf / allowance
 export const USDC_ABI = [
@@ -60,6 +62,7 @@ type ContractAddresses = {
   ValidationRegistry: `0x${string}`;
   CrossChainReceiver: `0x${string}`;
   PathRegistry:       `0x${string}`;
+  PixelOracleAnchor:  `0x${string}`;
   USDC:               `0x${string}`;
 };
 
@@ -77,6 +80,7 @@ export const CONTRACT_ADDRESSES: Record<number, ContractAddresses> = {
     ValidationRegistry: (process.env.NEXT_PUBLIC_VALIDATION_REGISTRY_11155111 || ZERO) as `0x${string}`,
     CrossChainReceiver: (process.env.NEXT_PUBLIC_CROSS_CHAIN_RECEIVER_11155111|| ZERO) as `0x${string}`,
     PathRegistry:       (process.env.NEXT_PUBLIC_PATH_REGISTRY_11155111       || ZERO) as `0x${string}`,
+    PixelOracleAnchor:  (process.env.NEXT_PUBLIC_PIXEL_ORACLE_ANCHOR_11155111 || ZERO) as `0x${string}`,
     USDC:               "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238", // Circle USDC testnet
   },
   // Ethereum Mainnet
@@ -90,6 +94,7 @@ export const CONTRACT_ADDRESSES: Record<number, ContractAddresses> = {
     ValidationRegistry: (process.env.NEXT_PUBLIC_VALIDATION_REGISTRY_1 || ZERO) as `0x${string}`,
     CrossChainReceiver: (process.env.NEXT_PUBLIC_CROSS_CHAIN_RECEIVER_1|| ZERO) as `0x${string}`,
     PathRegistry:       (process.env.NEXT_PUBLIC_PATH_REGISTRY_1       || ZERO) as `0x${string}`,
+    PixelOracleAnchor:  (process.env.NEXT_PUBLIC_PIXEL_ORACLE_ANCHOR_1 || ZERO) as `0x${string}`,
     USDC:               "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // Circle USDC mainnet
   },
 };

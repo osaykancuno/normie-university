@@ -51,3 +51,4 @@ app/audit-api-wiring.mjs
 app/seed-batch*.ts
 app/deactivate-*.ts
 app/update-skills-*.ts
+app/anchor-crosscheck.mjs

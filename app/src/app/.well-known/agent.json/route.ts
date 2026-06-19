@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
       SkillMarketplace: addr.SkillMarketplace,
       ReputationEngine: addr.ReputationEngine,
       ValidationRegistry: addr.ValidationRegistry,
+      PixelOracleAnchor: addr.PixelOracleAnchor,
       Treasury: addr.Treasury,
       PathRegistry: addr.PathRegistry,
       USDC: addr.USDC,
@@ -48,6 +49,7 @@ export async function GET(req: NextRequest) {
       verify:       `${origin}/api/verify`,
       verifyManual: `${origin}/api/verify/manual`,
       validate:     `${origin}/api/validation/attest`,
+      anchorProof:  `${origin}/api/anchor/proof`,
       ipfsUpload:   `${origin}/api/ipfs/upload`,
       paths:        `${origin}/api/paths`,
       path:         `${origin}/api/paths/{id}`,
@@ -80,6 +82,8 @@ export async function GET(req: NextRequest) {
       "auto-verifier",       // chain-aware, spec-driven oracle signs completions (deadline + nonce)
       "erc-8004-validation", // ValidationRegistry: independent validators attest, blended into reputation
       "erc-8004-reputation", // ReputationEngine: 5-factor on-chain score, permissionlessly readable
+      "anchor-checkpoint",   // PixelOracleAnchor: per-epoch 2-of-2 Merkle checkpoint of credentials + reputation
+      "skill-gate",          // any dApp can gate on a NU credential/reputation via SkillGate + the anchor
       "ipfs-pinning",        // /api/ipfs/upload via Pinata
       "erc-8004-identity",   // AgentRegistry compliant
       "normies-native",      // pixel-art avatar + API proxy for Normies holders
