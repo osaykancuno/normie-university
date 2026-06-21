@@ -10,6 +10,7 @@ import {
   SKILL_MARKETPLACE_ABI,
   AGENT_REGISTRY_ABI,
   REPUTATION_ENGINE_ABI,
+  PATH_REGISTRY_ABI,
   getAddresses,
 } from "@/lib/contracts";
 import {
@@ -134,13 +135,65 @@ function demoPathToApi(p: DemoPath): ApiPath {
   };
 }
 
+type RawPath = {
+  pathId: bigint; name: string; description: string; skillIds: readonly bigint[];
+  discountBps: number; contentURI: string; creator: `0x${string}`;
+  createdAt: bigint; updatedAt: bigint; isActive: boolean; totalPurchases: bigint;
+};
+
 export async function listPaths(): Promise<ApiPath[]> {
-  // For now demo-only; live PathRegistry reads can be added when contracts deploy.
-  if (!isProtocolDeployed()) {
+  const addr = getAddresses();
+  // Demo only when the protocol/registry isn't deployed at all.
+  if (!isProtocolDeployed() || addr.PathRegistry === ZERO) {
     return DEMO_PATHS.map(demoPathToApi);
   }
-  // TODO: read from on-chain PathRegistry once deployed
-  return DEMO_PATHS.map(demoPathToApi);
+  const client = getPublicClient();
+  const total = Number(
+    (await client
+      .readContract({ address: addr.PathRegistry, abi: PATH_REGISTRY_ABI, functionName: "totalPaths" })
+      .catch(() => 0n)) as bigint
+  );
+  // Deployed but no paths created yet → empty list (NOT demo: the live catalogue
+  // genuinely has no bundles, and demo bundles would reference retired skills).
+  if (total === 0) return [];
+
+  const ids = Array.from({ length: total }, (_, i) => BigInt(i + 1));
+  const mk = (fn: string) =>
+    ids.map((id) => ({ address: addr.PathRegistry, abi: PATH_REGISTRY_ABI, functionName: fn, args: [id] as const }));
+  const [paths, usdc, wei] = await Promise.all([
+    client.multicall({ allowFailure: true, contracts: mk("getPath") }),
+    client.multicall({ allowFailure: true, contracts: mk("getPathPriceInUsdc") }),
+    client.multicall({ allowFailure: true, contracts: mk("getPathPriceInWei") }),
+  ]);
+
+  const out: ApiPath[] = [];
+  paths.forEach((r, i) => {
+    if (r.status !== "success") return;
+    const p = r.result as unknown as RawPath;
+    if (!p.isActive) return; // public list shows active paths only
+    const dU = usdc[i].status === "success" ? (usdc[i].result as bigint) : 0n;
+    const dW = wei[i].status === "success" ? (wei[i].result as bigint) : 0n;
+    // Regular (undiscounted) price = discounted * 10000 / (10000 - discountBps).
+    const denom = BigInt(10000 - Number(p.discountBps));
+    const rU = denom > 0n ? (dU * 10000n) / denom : dU;
+    const rW = denom > 0n ? (dW * 10000n) / denom : dW;
+    out.push({
+      pathId: p.pathId.toString(),
+      name: p.name,
+      description: p.description,
+      skillIds: p.skillIds.map((s) => s.toString()),
+      discountBps: Number(p.discountBps),
+      contentURI: p.contentURI,
+      creator: p.creator,
+      isActive: p.isActive,
+      totalPurchases: Number(p.totalPurchases),
+      priceInUsdc: dU.toString(),
+      priceInWei: dW.toString(),
+      regularPriceInUsdc: rU.toString(),
+      regularPriceInWei: rW.toString(),
+    });
+  });
+  return out;
 }
 
 export async function getPathById(pathId: bigint): Promise<ApiPath | null> {
@@ -587,9 +640,27 @@ export async function getPlatformStats() {
   const pick = (r: { status: string; result?: unknown }) =>
     r.status === "success" ? Number(r.result as bigint) : 0;
 
+  // `totalSkills` is the monotonic id counter (includes deactivated/parked
+  // skills). The public-facing number should be the ACTIVE, browsable catalogue
+  // — count isSkillActive(1..total) so the stat matches what /skills shows.
+  const totalIds = pick(skills);
+  let activeSkills = totalIds;
+  if (totalIds > 0) {
+    const activeRes = await client.multicall({
+      allowFailure: true,
+      contracts: Array.from({ length: totalIds }, (_, i) => ({
+        address: addr.SkillRegistry,
+        abi: SKILL_REGISTRY_ABI,
+        functionName: "isSkillActive" as const,
+        args: [BigInt(i + 1)] as const,
+      })),
+    });
+    activeSkills = activeRes.filter((r) => r.status === "success" && r.result === true).length;
+  }
+
   return {
     totalAgents:      pick(agents),
-    totalSkills:      pick(skills),
+    totalSkills:      activeSkills,
     totalCredentials: pick(credentials),
     totalTrackedAgents: pick(tracked),
   };

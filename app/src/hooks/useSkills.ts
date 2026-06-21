@@ -79,7 +79,9 @@ export function useSkill(skillId: bigint | undefined) {
 }
 
 /// Fetch skills in a [1, total] range (batched). Demo-mode aware.
-export function useAllSkills(limit = 50) {
+/// Default covers the whole catalogue (now 53 on-chain ids, 32 active) — at 50
+/// the newest skills (#51-53) were silently cut off the listing.
+export function useAllSkills(limit = 200) {
   const addr = getAddresses();
   const demo = isDemoMode(addr.SkillRegistry);
 

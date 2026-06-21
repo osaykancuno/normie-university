@@ -17,102 +17,88 @@ type Curriculum = {
   whyOrder: string;
 };
 
+// Mirrors the 5 real on-chain learning paths created in PathRegistry
+// (totalPaths=5). Same names, skill ids, ordering and discounts — every skill
+// referenced here is ACTIVE in SkillRegistry and auto-verifiable on-chain.
 const CURRICULA: Curriculum[] = [
   {
-    id: "yield-stack",
-    icon: "🌾",
-    title: "The Yield Stack",
-    tagline: "Set-and-forget income across the major lending + LST + farming protocols.",
-    audience: "Holders of idle stablecoins or ETH who want APY without active management.",
+    id: "liquid-staking-foundations",
+    icon: "🥩",
+    title: "Liquid Staking Foundations",
+    tagline: "Master Ethereum liquid staking end-to-end and get a composable, value-accruing token.",
+    audience: "Holders of idle ETH who want staking yield without running a validator.",
     skills: [
-      { id: 24, name: "Lido stETH Staking",          price: "$0.49",  difficulty: "Beginner" },
-      { id: 2,  name: "Aave V3 Supply & Withdraw",   price: "$0.49",  difficulty: "Beginner" },
-      { id: 37, name: "Compound V3 Supply",          price: "$0.49",  difficulty: "Beginner" },
-      { id: 39, name: "Maker sDAI (DSR)",            price: "$0.49",  difficulty: "Beginner" },
-      { id: 18, name: "Multi-Protocol Yield Router", price: "$9.99",  difficulty: "Advanced" },
-      { id: 20, name: "Pendle PT/YT",                price: "$9.99",  difficulty: "Advanced" },
+      { id: 24, name: "Lido ETH → stETH Liquid Staking", price: "$0.49", difficulty: "Beginner" },
+      { id: 41, name: "Rocket Pool rETH Staking",        price: "$0.49", difficulty: "Beginner" },
+      { id: 42, name: "ether.fi eETH Liquid Restaking",  price: "$0.49", difficulty: "Beginner" },
+      { id: 51, name: "Lido wstETH Wrap",                price: "$0.49", difficulty: "Beginner" },
     ],
-    total: "$21.94",
-    bundleNote: "Buy the bundle on mainnet: ~$15.99 (−27%).",
-    whyOrder: "Start with the cheap deposits (#24 / #2 / #37 / #39) to feel the rate market. Then the router (#18) makes the choice automatic. Pendle (#20) is the optional yield-tokenization upgrade.",
+    total: "$1.96",
+    bundleNote: "Bundle live on-chain — atomic purchase at launch: $1.67 (−15%).",
+    whyOrder: "Start with Lido stETH (#24), the deepest-liquidity LST. Diversify the validator set with Rocket Pool (#41) and ether.fi (#42), then wrap into the non-rebasing wstETH (#51) that DeFi uses as collateral.",
   },
   {
-    id: "defi-trader",
-    icon: "📈",
-    title: "The DeFi Trader",
-    tagline: "Best execution + sandwich protection on every swap.",
-    audience: "Active traders who size up and lose 2-3% per trade to bad routing or MEV.",
+    id: "restaking-pro",
+    icon: "♻️",
+    title: "Restaking Pro",
+    tagline: "Go beyond staking into EigenLayer restaking for layered AVS yield.",
+    audience: "ETH stakers who want extra restaking yield on top of base staking rewards.",
     skills: [
-      { id: 1,  name: "Uniswap V3 Swap",           price: "$2.99",  difficulty: "Intermediate" },
-      { id: 21, name: "UniswapX Best Execution",   price: "$2.99",  difficulty: "Intermediate" },
-      { id: 19, name: "Anti-MEV via Flashbots",    price: "$2.99",  difficulty: "Intermediate" },
-      { id: 40, name: "GMX V2 Perp Trading",       price: "$9.99",  difficulty: "Advanced" },
-      { id: 12, name: "Arbitrage Detection",       price: "$24.99", difficulty: "Expert" },
+      { id: 43, name: "Renzo ezETH Restaking",                 price: "$2.99", difficulty: "Intermediate" },
+      { id: 44, name: "Kelp DAO rsETH Restaking",              price: "$2.99", difficulty: "Intermediate" },
+      { id: 23, name: "EigenLayer Restaking with AVS Selection", price: "$9.99", difficulty: "Advanced" },
     ],
-    total: "$43.95",
-    bundleNote: "Buy the bundle on mainnet: ~$31.99 (−27%).",
-    whyOrder: "Get the swap primitive (#1), then intent-based routing (#21) and private submission (#19) before going leveraged on GMX (#40). Arbitrage detection (#12) closes the loop.",
+    total: "$15.97",
+    bundleNote: "Bundle live on-chain — atomic purchase at launch: $12.78 (−20%).",
+    whyOrder: "Mint liquid restaking tokens via Renzo (#43) and Kelp (#44) first — they manage the operator set for you. Then take direct control with native EigenLayer restaking + AVS selection (#23).",
   },
   {
-    id: "leveraged-defi",
-    icon: "⚠️",
-    title: "Leveraged Borrower Safety",
-    tagline: "Avoid liquidation, rebalance LPs, recover after price moves.",
-    audience: "Anyone running collateralized positions on Aave or running concentrated Uniswap V3 LPs.",
+    id: "stablecoin-yield-engine",
+    icon: "💵",
+    title: "Stablecoin Yield Engine",
+    tagline: "Put dollars to work with zero liquidation risk across three ERC-4626 vaults.",
+    audience: "Holders of idle stablecoins who want savings-rate yield, no IL, fully liquid.",
     skills: [
-      { id: 17, name: "Aave V3 Health-Factor Manager", price: "$9.99",  difficulty: "Advanced" },
-      { id: 27, name: "Uniswap V3 LP Rebalance",       price: "$24.99", difficulty: "Expert" },
-      { id: 38, name: "Curve Stable Pool LP",          price: "$2.99",  difficulty: "Intermediate" },
+      { id: 45, name: "Ethena sUSDe Staking", price: "$0.49", difficulty: "Beginner" },
+      { id: 46, name: "Sky sUSDS Savings",    price: "$0.49", difficulty: "Beginner" },
+      { id: 39, name: "Maker sDAI — DSR Savings", price: "$0.49", difficulty: "Beginner" },
     ],
-    total: "$37.97",
-    bundleNote: "Buy the bundle on mainnet: ~$27.99 (−26%).",
-    whyOrder: "Health-factor first (#17) — one avoided liquidation pays for the whole bundle 50-500x over. Then LP rebalancing (#27) keeps your capital productive. Curve (#38) adds stable LP exposure.",
+    total: "$1.47",
+    bundleNote: "Bundle live on-chain — atomic purchase at launch: $1.25 (−15%).",
+    whyOrder: "Three battle-tested ERC-4626 dollar vaults: Ethena sUSDe (#45) for protocol yield, Sky sUSDS (#46) and Maker sDAI (#39) for the savings rate. Same deposit pattern, different risk/yield profiles.",
   },
   {
-    id: "nft-builder",
-    icon: "🖼️",
-    title: "NFT Builder",
-    tagline: "Mint, enforce royalties, snipe floors. Native to Normies.",
-    audience: "Normie holders who want their agent operating on the collection — buying, listing, royalty-aware.",
+    id: "dex-execution-master",
+    icon: "🔁",
+    title: "DEX Execution Master",
+    tagline: "Best execution across the majors — routers, aggregators and stable pools.",
+    audience: "Active traders who lose 2-3% per trade to bad routing.",
     skills: [
-      { id: 9,  name: "ERC-721 Mint",        price: "$0.49", difficulty: "Beginner" },
-      { id: 10, name: "EIP-2981 Royalty",    price: "$2.99", difficulty: "Intermediate" },
-      { id: 25, name: "Blur Collection Bid", price: "$2.99", difficulty: "Intermediate" },
+      { id: 1,  name: "Uniswap V3 Swap Execution",    price: "$2.99", difficulty: "Intermediate" },
+      { id: 48, name: "Balancer V2 Vault Swap",       price: "$2.99", difficulty: "Intermediate" },
+      { id: 49, name: "1inch Aggregation Swap (V6)",  price: "$2.99", difficulty: "Intermediate" },
+      { id: 50, name: "Uniswap Universal Router Swap", price: "$9.99", difficulty: "Advanced" },
+      { id: 38, name: "Curve Stable Pool LP",         price: "$2.99", difficulty: "Intermediate" },
     ],
-    total: "$6.47",
-    bundleNote: "Buy the bundle on mainnet: ~$4.99 (−23%).",
-    whyOrder: "Mint primitive (#9), then royalty enforcement (#10), then active floor-bidding (#25). Bundle priced for Normie holders — class is in session.",
+    total: "$21.95",
+    bundleNote: "Bundle live on-chain — atomic purchase at launch: $16.46 (−25%).",
+    whyOrder: "Learn the direct venues first — Uniswap V3 (#1), Balancer (#48), Curve (#38) — then layer on aggregation: 1inch (#49) for best-price routing and the Universal Router (#50) for batched, Permit2-powered execution.",
   },
   {
-    id: "dao-power",
-    icon: "🏛️",
-    title: "DAO Power Voter",
-    tagline: "Vote on 20 DAOs in one batch, harvest bribes, claim every vesting cliff.",
-    audience: "Holders with significant governance-token exposure across multiple protocols.",
+    id: "multi-chain-defi",
+    icon: "🌉",
+    title: "Multi-Chain DeFi",
+    tagline: "Operate beyond mainnet — Base, Optimism and Arbitrum, plus bridging.",
+    audience: "Agents that need to act wherever liquidity and incentives live, not just on L1.",
     skills: [
-      { id: 29, name: "Multi-DAO Snapshot Voting", price: "$0.49", difficulty: "Beginner" },
-      { id: 28, name: "Convex Bribe Harvester",    price: "$2.99", difficulty: "Intermediate" },
-      { id: 30, name: "Token Vesting Auto-Claim",  price: "$2.99", difficulty: "Intermediate" },
+      { id: 52, name: "Aerodrome Swap (Base)",      price: "$2.99", difficulty: "Intermediate" },
+      { id: 53, name: "Velodrome Swap (Optimism)",  price: "$2.99", difficulty: "Intermediate" },
+      { id: 26, name: "Across Cross-Chain Bridge",  price: "$2.99", difficulty: "Intermediate" },
+      { id: 40, name: "GMX V2 Perpetual Trading",   price: "$9.99", difficulty: "Advanced" },
     ],
-    total: "$6.47",
-    bundleNote: "Buy the bundle on mainnet: ~$4.99 (−23%).",
-    whyOrder: "Batched voting (#29) saves the most time. Bribe harvesting (#28) and vesting auto-claim (#30) are the recurring revenue legs.",
-  },
-  {
-    id: "agent-native",
-    icon: "🤖",
-    title: "Builder of Agents",
-    tagline: "ERC-7702 delegation, EAS attestations, zk-proofs. Compose your own agent.",
-    audience: "Devs building autonomous agents — including agents that build agents.",
-    skills: [
-      { id: 33, name: "ERC-7702 EOA Delegation", price: "$24.99", difficulty: "Expert" },
-      { id: 35, name: "EAS Attestation Issuance", price: "$2.99",  difficulty: "Intermediate" },
-      { id: 14, name: "zk-Proof Verification",   price: "$24.99", difficulty: "Expert" },
-      { id: 6,  name: "Safe Multisig Tx",        price: "$9.99",  difficulty: "Advanced" },
-    ],
-    total: "$62.96",
-    bundleNote: "Buy the bundle on mainnet: ~$44.99 (−29%).",
-    whyOrder: "Delegation primitive first (#33) so your EOA gains batch + session keys. EAS (#35) lets you attest to anything. zk (#14) gives privacy. Safe (#6) for production custody.",
+    total: "$18.96",
+    bundleNote: "Bundle live on-chain — atomic purchase at launch: $15.17 (−20%).",
+    whyOrder: "Swap on Base via Aerodrome (#52) and on Optimism via Velodrome (#53), move liquidity across chains with Across (#26), then trade perps on Arbitrum with GMX V2 (#40). One curriculum, four chains.",
   },
 ];
 
@@ -132,12 +118,12 @@ export default function CurriculaPage() {
           Curated paths through the catalogue.
         </h1>
         <p className="mt-3 max-w-3xl text-base leading-relaxed text-ink-soft">
-          Six themed curricula, each a real ordered sequence of active skills.
-          Bundled atomic purchase will ship with the mainnet release at a
-          25-30% discount versus buying skills individually. Until then, this
-          page is the architecture: pick the curriculum that matches your goal,
-          buy the skills in the suggested order, earn one Soulbound credential
-          per skill.
+          Five themed curricula, each a real ordered sequence of active skills
+          and a live bundle in the on-chain PathRegistry. Atomic bundled
+          purchase opens with the launch release at a 15-25% discount versus
+          buying skills individually. Pick the curriculum that matches your
+          goal, take the skills in the suggested order, earn one Soulbound
+          credential per skill.
         </p>
         <p className="mt-3 text-xs mono text-ink-muted">
           Every skill_id below resolves to an active, IPFS-pinned, on-chain
