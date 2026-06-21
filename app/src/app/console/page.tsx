@@ -5,12 +5,14 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { IS_COMING_SOON } from "@/config/launch";
 
+type Tx = { to: string; value: string; data: string; functionName: string; needsApproval?: string };
 type Plan = {
   skillId: string; skillName: string; difficulty: number; chainId: number; chainName: string;
   owned: boolean | null;
   action: { verb: string; amount?: string; asset?: string };
   contract: { name: string; address: string; explorer: string | null };
   call: { functionName?: string; selector?: string };
+  tx: Tx | null;
   preview: string; steps: string[]; outcome: string; safety: string[]; confidence: number;
 };
 type PlanResult =
@@ -28,8 +30,30 @@ const EXAMPLES = [
 
 const DIFF = ["Beginner", "Intermediate", "Advanced", "Expert"];
 
+function Row({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="flex gap-3">
+      <dt className="mono w-20 shrink-0 text-ink-muted">{k}</dt>
+      <dd className="mono break-all text-ink-soft">{v}</dd>
+    </div>
+  );
+}
+
+function formatEth(wei: string): string {
+  try {
+    const n = BigInt(wei);
+    if (n === 0n) return "0";
+    const whole = n / 10n ** 18n;
+    const frac = (n % 10n ** 18n).toString().padStart(18, "0").slice(0, 4).replace(/0+$/, "");
+    return frac ? `${whole}.${frac}` : `${whole}`;
+  } catch {
+    return "0";
+  }
+}
+
 export default function ConsolePage() {
   const [instruction, setInstruction] = useState("");
+  const [agent, setAgent] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<PlanResult | null>(null);
 
@@ -43,7 +67,7 @@ export default function ConsolePage() {
       const r = await fetch("/api/console/plan", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ instruction: value }),
+        body: JSON.stringify({ instruction: value, agent: agent.trim() || undefined }),
       });
       setResult(await r.json());
     } catch {
@@ -80,8 +104,13 @@ export default function ConsolePage() {
           placeholder="e.g. Stake 1 ETH on Lido"
           className="w-full resize-none bg-transparent text-lg text-ink outline-none placeholder:text-ink-faint"
         />
-        <div className="mt-3 flex items-center justify-between">
-          <span className="mono text-[10px] text-ink-faint">⌘/Ctrl + Enter</span>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <input
+            value={agent}
+            onChange={(e) => setAgent(e.target.value)}
+            placeholder="Agent address (optional — checks your credentials)"
+            className="mono min-w-[260px] flex-1 border border-line bg-paper px-3 py-1.5 text-xs text-ink outline-none placeholder:text-ink-faint focus:border-line-strong"
+          />
           <button
             onClick={() => plan()}
             disabled={loading || !instruction.trim()}
@@ -90,6 +119,7 @@ export default function ConsolePage() {
             {loading ? "Planning…" : "Plan it →"}
           </button>
         </div>
+        <span className="mono mt-2 block text-[10px] text-ink-faint">⌘/Ctrl + Enter to plan</span>
       </div>
 
       {/* example chips */}
@@ -166,6 +196,12 @@ function PlanView({ result, onPick }: { result: Extract<PlanResult, { ok: true }
           {p.call.functionName && (
             <span className="mono border border-line bg-paper px-2.5 py-1 text-ink-soft">{p.call.functionName}()</span>
           )}
+          {p.owned === true && (
+            <span className="border border-line bg-paper px-2.5 py-1 text-ink-soft">✓ credential owned</span>
+          )}
+          {p.owned === false && (
+            <span className="border border-line bg-paper px-2.5 py-1 text-ink-soft">new credential on completion</span>
+          )}
         </div>
 
         {/* steps */}
@@ -197,6 +233,24 @@ function PlanView({ result, onPick }: { result: Extract<PlanResult, { ok: true }
 
         <p className="mt-3 text-xs text-ink-soft">{p.outcome}</p>
       </div>
+
+      {/* the exact transaction */}
+      {p.tx && (
+        <div className="border border-line bg-paper p-4">
+          <div className="flex items-center justify-between">
+            <div className="mono text-[10px] uppercase tracking-wider text-ink-muted">Transaction you will sign</div>
+            {p.tx.needsApproval && (
+              <span className="mono text-[10px] text-ink-muted">+ one-time {p.tx.needsApproval} approval</span>
+            )}
+          </div>
+          <dl className="mt-2 space-y-1 text-xs">
+            <Row k="to" v={p.tx.to} />
+            <Row k="function" v={`${p.tx.functionName}()`} />
+            <Row k="value" v={`${formatEth(p.tx.value)} ETH`} />
+            <Row k="calldata" v={`${p.tx.data.slice(0, 26)}…`} />
+          </dl>
+        </div>
+      )}
 
       {/* safety */}
       <div className="border border-line bg-canvas p-5">

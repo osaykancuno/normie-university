@@ -15,9 +15,90 @@
 ///         in later behind the same interface.
 
 import "server-only";
+import { encodeFunctionData, isAddress, parseEther, parseUnits, type Hex } from "viem";
 import { listSkills, type ApiSkill } from "./skills";
 import { loadSkillModule, type SkillModule } from "./skill-module-loader";
 import { explorerFor } from "./chains-rpc";
+import { getPublicClient } from "./viem";
+import { SKILL_CREDENTIAL_ABI, getAddresses } from "@/lib/contracts";
+
+const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
+
+/// Built transaction the user will sign. Only produced when we can encode it
+/// safely from a known function + a parsed amount; otherwise the plan still
+/// shows the target + function, just without concrete calldata.
+export type ConsoleTx = {
+  to: string;
+  value: string;        // wei, as string
+  data: Hex;
+  functionName: string;
+  needsApproval?: string; // ERC-20 symbol that must be approved first
+};
+
+function assetDecimals(asset?: string): number {
+  const a = (asset ?? "").toLowerCase();
+  return a === "usdc" || a === "usdt" ? 6 : 18;
+}
+
+/// Encode the exact transaction for the certified function. Supports the
+/// value-bearing staking entrypoints (no approval) and the common ERC-4626 /
+/// wrap entrypoints (approval-first). Returns null when it can't build safely.
+function buildTx(
+  to: string,
+  selector: string | undefined,
+  amount: string | undefined,
+  asset: string | undefined,
+  agent: string | undefined
+): ConsoleTx | null {
+  if (!to || !selector || !amount) return null;
+  const sel = selector.toLowerCase();
+  try {
+    switch (sel) {
+      case "0xa1903eab": // Lido submit(address) payable
+        return { to, value: parseEther(amount).toString(), functionName: "submit",
+          data: encodeFunctionData({ abi: [{ name: "submit", type: "function", stateMutability: "payable", inputs: [{ name: "_referral", type: "address" }], outputs: [{ type: "uint256" }] }], functionName: "submit", args: [ZERO_ADDR] }) };
+      case "0xd0e30db0": // deposit() payable (Rocket, ether.fi)
+        return { to, value: parseEther(amount).toString(), functionName: "deposit",
+          data: encodeFunctionData({ abi: [{ name: "deposit", type: "function", stateMutability: "payable", inputs: [], outputs: [] }], functionName: "deposit", args: [] }) };
+      case "0xf6326fb3": // Renzo depositETH() payable
+        return { to, value: parseEther(amount).toString(), functionName: "depositETH",
+          data: encodeFunctionData({ abi: [{ name: "depositETH", type: "function", stateMutability: "payable", inputs: [], outputs: [] }], functionName: "depositETH", args: [] }) };
+      case "0x72c51c0b": // Kelp depositETH(uint256,string) payable
+        return { to, value: parseEther(amount).toString(), functionName: "depositETH",
+          data: encodeFunctionData({ abi: [{ name: "depositETH", type: "function", stateMutability: "payable", inputs: [{ type: "uint256" }, { type: "string" }], outputs: [] }], functionName: "depositETH", args: [0n, ""] }) };
+      case "0xea598cb0": // wstETH wrap(uint256) — approval-first
+        return { to, value: "0", functionName: "wrap", needsApproval: "stETH",
+          data: encodeFunctionData({ abi: [{ name: "wrap", type: "function", stateMutability: "nonpayable", inputs: [{ type: "uint256" }], outputs: [{ type: "uint256" }] }], functionName: "wrap", args: [parseEther(amount)] }) };
+      case "0x6e553f65": { // ERC-4626 deposit(uint256,address) — approval-first
+        if (!agent || !isAddress(agent)) return null; // receiver required
+        return { to, value: "0", functionName: "deposit", needsApproval: asset,
+          data: encodeFunctionData({ abi: [{ name: "deposit", type: "function", stateMutability: "nonpayable", inputs: [{ type: "uint256" }, { type: "address" }], outputs: [{ type: "uint256" }] }], functionName: "deposit", args: [parseUnits(amount, assetDecimals(asset)), agent as `0x${string}`] }) };
+      }
+      default:
+        return null;
+    }
+  } catch {
+    return null;
+  }
+}
+
+/// Does the agent already hold this skill's credential? (Sepolia SkillCredential)
+async function checkOwned(agent: string, skillId: bigint): Promise<boolean | null> {
+  if (!isAddress(agent)) return null;
+  try {
+    const client = getPublicClient();
+    const addr = getAddresses();
+    const r = await client.readContract({
+      address: addr.SkillCredential,
+      abi: SKILL_CREDENTIAL_ABI,
+      functionName: "hasSkill",
+      args: [agent as `0x${string}`, skillId],
+    });
+    return Boolean(r);
+  } catch {
+    return null;
+  }
+}
 
 export type ConsoleAction = {
   verb: string;            // stake | swap | save | supply | restake | wrap | bridge | trade
@@ -35,6 +116,7 @@ export type ConsolePlan = {
   action: ConsoleAction;
   contract: { name: string; address: string; explorer: string | null };
   call: { functionName?: string; selector?: string };
+  tx: ConsoleTx | null;    // the exact transaction to sign (when buildable)
   preview: string;         // one-line plain-English summary
   steps: string[];         // ordered human steps
   outcome: string;         // what the user ends up with
@@ -175,6 +257,38 @@ function primarySelector(mod: SkillModule | null): { functionName?: string; sele
   return {};
 }
 
+/// OPTIONAL LLM refinement. When ANTHROPIC_API_KEY is set, Claude Haiku picks
+/// the best-fitting skill for fuzzier instructions the keyword matcher misses
+/// (e.g. "I want exposure to ETH staking but keep it liquid"). Returns the
+/// chosen skillId or null; always falls back to the deterministic match.
+async function llmRefine(instruction: string, entries: Entry[]): Promise<string | null> {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) return null;
+  const menu = entries.map((e) => `#${e.skill.skillId} ${e.skill.name}`).join("\n");
+  try {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
+      signal: AbortSignal.timeout(8000),
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 64,
+        system:
+          "You map a user's DeFi intent to exactly ONE skill from the provided menu. " +
+          "Reply with ONLY the numeric skill id (no #, no prose). If nothing fits, reply NONE.",
+        messages: [{ role: "user", content: `Menu:\n${menu}\n\nInstruction: ${instruction}\n\nBest skill id:` }],
+      }),
+    });
+    if (!r.ok) return null;
+    const j = await r.json();
+    const text: string = j?.content?.[0]?.text?.trim() ?? "";
+    const id = text.match(/\d+/)?.[0];
+    return id && entries.some((e) => e.skill.skillId === id) ? id : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function planInstruction(instruction: string, agent?: string): Promise<PlanResult> {
   const raw = instruction.trim();
   if (!raw) return { ok: false, instruction, reason: "Empty instruction.", suggestions: [] };
@@ -192,7 +306,16 @@ export async function planInstruction(instruction: string, agent?: string): Prom
     .map((e) => ({ e, s: score(tokens, verb, asset, e) }))
     .sort((a, b) => b.s - a.s);
 
-  const top = ranked[0];
+  let top = ranked[0];
+  // Weak keyword match → give the optional LLM planner a chance to pick a
+  // better skill from the menu (no-op unless ANTHROPIC_API_KEY is configured).
+  if (!top || top.s < 5) {
+    const llmId = await llmRefine(raw, entries);
+    if (llmId) {
+      const picked = entries.find((x) => x.skill.skillId === llmId)!;
+      top = { e: picked, s: Math.max(top?.s ?? 0, 5) };
+    }
+  }
   const suggestions = entries.slice(0, 5).map((e) => ({ skillId: e.skill.skillId, name: e.skill.name }));
   if (!top || top.s < 3) {
     return {
@@ -211,9 +334,10 @@ export async function planInstruction(instruction: string, agent?: string): Prom
   const chainName = CHAIN_NAME[chainId] ?? `chain ${chainId}`;
   const verbLabel = verb ?? "interact with";
 
-  // Credential-ownership lookup is a later enhancement; unknown for the MVP.
-  const owned: boolean | null = null;
-  void agent;
+  // Credential ownership (if the caller passed an agent address) + the exact
+  // transaction to sign (when we can encode it safely).
+  const owned: boolean | null = agent ? await checkOwned(agent, BigInt(e.skill.skillId)) : null;
+  const tx = buildTx(contract?.address ?? "", sel.selector, amount, asset, agent);
 
   const amountStr = amount ? `${amount}${asset ? " " + asset : ""}` : (asset ?? "your funds");
   const action: ConsoleAction = { verb: verbLabel, amount, asset };
@@ -229,6 +353,7 @@ export async function planInstruction(instruction: string, agent?: string): Prom
     action,
     contract: { name: contract?.name ?? "target contract", address: contract?.address ?? "", explorer },
     call: sel,
+    tx,
     preview: `${cap(verbLabel)} ${amountStr} via ${e.skill.name} on ${chainName}.`,
     steps: buildSteps(verbLabel, amountStr, e.skill.name, contract?.name, sel.functionName),
     outcome: e.module?.verification?.criteria
