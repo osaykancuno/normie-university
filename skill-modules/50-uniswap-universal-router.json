@@ -1,0 +1,50 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Uniswap Universal Router Swap",
+  "version": "1.0.0",
+  "description": "Execute swaps through Uniswap's Universal Router — the unified entrypoint for V2/V3/V4 routing with Permit2 and command batching.",
+  "category": "DeFi",
+  "difficulty": "advanced",
+  "chain": {
+    "id": 1,
+    "name": "Ethereum Mainnet"
+  },
+  "prerequisites": [],
+  "use_case": "Agent batches an approve (via Permit2) + multi-hop swap into one Universal Router execute() call for gas-efficient best execution.",
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      {
+        "role": "universal_router",
+        "name": "Uniswap Universal Router",
+        "address": "0x66a9893cC07D91D95644AEDD05D03f95e1dBA8Af",
+        "abi_fragments": [
+          {
+            "type": "function",
+            "selector": "0x3593564c",
+            "stateMutability": "nonpayable"
+          }
+        ]
+      },
+      {
+        "role": "permit2",
+        "name": "Permit2",
+        "address": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
+      }
+    ],
+    "steps": [
+      {
+        "id": "interact",
+        "action": "call",
+        "target": "$UNIVERSAL_ROUTER",
+        "function": "main",
+        "params": {}
+      }
+    ]
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Tx target is the Universal Router, function execute(...). Token balances changed consistent with the routed swap.",
+    "min_score": 90
+  }
+}

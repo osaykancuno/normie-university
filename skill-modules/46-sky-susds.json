@@ -1,0 +1,50 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Sky sUSDS Savings",
+  "version": "1.0.0",
+  "description": "Deposit USDS into sUSDS (Sky/MakerDAO successor) — an ERC-4626 vault paying the Sky Savings Rate. Zero liquidation risk.",
+  "category": "DeFi",
+  "difficulty": "beginner",
+  "chain": {
+    "id": 1,
+    "name": "Ethereum Mainnet"
+  },
+  "prerequisites": [],
+  "use_case": "Agent parks USDS in sUSDS → earns the Sky Savings Rate, fully liquid, redeemable any block. The successor to the DAI Savings Rate.",
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      {
+        "role": "susds",
+        "name": "sUSDS (ERC-4626)",
+        "address": "0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD",
+        "abi_fragments": [
+          {
+            "type": "function",
+            "selector": "0x6e553f65",
+            "stateMutability": "nonpayable"
+          }
+        ]
+      },
+      {
+        "role": "usds",
+        "name": "USDS",
+        "address": "0xdC035D45d973E3EC169d2276DDab16f1e407384F"
+      }
+    ],
+    "steps": [
+      {
+        "id": "interact",
+        "action": "call",
+        "target": "$SUSDS",
+        "function": "main",
+        "params": {}
+      }
+    ]
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Tx target is sUSDS, function deposit(assets,receiver), receiver == agent. Post-tx sUSDS.balanceOf(agent) increased.",
+    "min_score": 90
+  }
+}

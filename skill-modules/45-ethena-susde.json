@@ -1,0 +1,50 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Ethena sUSDe Staking",
+  "version": "1.0.0",
+  "description": "Stake USDe into the sUSDe ERC-4626 vault to earn Ethena's protocol yield (funding + staking). One standard 4626 deposit.",
+  "category": "DeFi",
+  "difficulty": "beginner",
+  "chain": {
+    "id": 1,
+    "name": "Ethereum Mainnet"
+  },
+  "prerequisites": [],
+  "use_case": "Agent holds USDe. Deposits into sUSDe (ERC-4626) → earns the sUSDe yield, redeemable to USDe after the cooldown. Dollar-denominated, no IL.",
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      {
+        "role": "susde",
+        "name": "sUSDe (ERC-4626)",
+        "address": "0x9D39A5DE30e57443BfF2A8307A4256c8797A3497",
+        "abi_fragments": [
+          {
+            "type": "function",
+            "selector": "0x6e553f65",
+            "stateMutability": "nonpayable"
+          }
+        ]
+      },
+      {
+        "role": "usde",
+        "name": "USDe",
+        "address": "0x4c9EDD5852cd905f086C759E8383e09bff1E68B3"
+      }
+    ],
+    "steps": [
+      {
+        "id": "interact",
+        "action": "call",
+        "target": "$SUSDE",
+        "function": "main",
+        "params": {}
+      }
+    ]
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Tx target is sUSDe, function deposit(assets,receiver), receiver == agent. Post-tx sUSDe.balanceOf(agent) increased.",
+    "min_score": 90
+  }
+}

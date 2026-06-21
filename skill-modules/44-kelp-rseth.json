@@ -1,0 +1,50 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Kelp DAO rsETH Restaking",
+  "version": "1.0.0",
+  "description": "Deposit ETH into Kelp DAO's liquid restaking pool to mint rsETH, accruing EigenLayer points and AVS rewards.",
+  "category": "DeFi",
+  "difficulty": "intermediate",
+  "chain": {
+    "id": 1,
+    "name": "Ethereum Mainnet"
+  },
+  "prerequisites": [],
+  "use_case": "Agent restakes ETH via Kelp LRTDepositPool → rsETH → liquid restaking position usable as collateral while earning restaking yield.",
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      {
+        "role": "deposit_pool",
+        "name": "Kelp LRTDepositPool",
+        "address": "0x036676389e48133B63a802f8635AD39E752D375D",
+        "abi_fragments": [
+          {
+            "type": "function",
+            "selector": "0x72c51c0b",
+            "stateMutability": "nonpayable"
+          }
+        ]
+      },
+      {
+        "role": "rseth",
+        "name": "rsETH",
+        "address": "0xA1290d69c65A6Fe4DF752f95823fae25cB99e5A7"
+      }
+    ],
+    "steps": [
+      {
+        "id": "interact",
+        "action": "call",
+        "target": "$DEPOSIT_POOL",
+        "function": "main",
+        "params": {}
+      }
+    ]
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Tx target is Kelp LRTDepositPool, function depositETH. Post-tx rsETH.balanceOf(agent) increased.",
+    "min_score": 90
+  }
+}

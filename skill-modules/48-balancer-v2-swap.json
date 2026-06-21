@@ -1,0 +1,45 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Balancer V2 Vault Swap",
+  "version": "1.0.0",
+  "description": "Execute a single swap through the Balancer V2 Vault — the canonical entrypoint routing all Balancer pool trades.",
+  "category": "DeFi",
+  "difficulty": "intermediate",
+  "chain": {
+    "id": 1,
+    "name": "Ethereum Mainnet"
+  },
+  "prerequisites": [],
+  "use_case": "Agent swaps tokenIn→tokenOut through a Balancer weighted/stable pool via Vault.swap(), getting Balancer's pool liquidity in one call.",
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      {
+        "role": "vault",
+        "name": "Balancer V2 Vault",
+        "address": "0xBA12222222228d8Ba445958a75a0704d566BF2C8",
+        "abi_fragments": [
+          {
+            "type": "function",
+            "selector": "0x52bbbe29",
+            "stateMutability": "nonpayable"
+          }
+        ]
+      }
+    ],
+    "steps": [
+      {
+        "id": "interact",
+        "action": "call",
+        "target": "$VAULT",
+        "function": "main",
+        "params": {}
+      }
+    ]
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Tx target is the Balancer V2 Vault, function swap(...). Token balances changed consistent with the swap.",
+    "min_score": 90
+  }
+}

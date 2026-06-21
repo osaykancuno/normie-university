@@ -1,0 +1,45 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Velodrome Swap (Optimism)",
+  "version": "1.0.0",
+  "description": "Swap on Optimism through Velodrome — the leading Solidly-style AMM on OP Mainnet — via its canonical Router.",
+  "category": "DeFi",
+  "difficulty": "intermediate",
+  "chain": {
+    "id": 10,
+    "name": "OP Mainnet"
+  },
+  "prerequisites": [],
+  "use_case": "Agent operating on Optimism swaps tokens through Velodrome's router across stable/volatile routes for deep OP-native liquidity.",
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      {
+        "role": "router",
+        "name": "Velodrome Router",
+        "address": "0xa062aE8A9c5e11aaA026fc2670B0D65cCc8B2858",
+        "abi_fragments": [
+          {
+            "type": "function",
+            "selector": "0xcac88ea9",
+            "stateMutability": "nonpayable"
+          }
+        ]
+      }
+    ],
+    "steps": [
+      {
+        "id": "interact",
+        "action": "call",
+        "target": "$ROUTER",
+        "function": "main",
+        "params": {}
+      }
+    ]
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Tx target is the Velodrome Router on Optimism (10), function swapExactTokensForTokens. Token balances changed consistent with the swap.",
+    "min_score": 90
+  }
+}

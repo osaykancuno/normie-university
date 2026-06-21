@@ -1,0 +1,38 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "1inch Aggregation Swap (V6)",
+  "version": "1.0.0",
+  "description": "Swap via the 1inch Aggregation Router V6 — best-price routing across hundreds of liquidity sources in a single tx.",
+  "category": "DeFi",
+  "difficulty": "intermediate",
+  "chain": {
+    "id": 1,
+    "name": "Ethereum Mainnet"
+  },
+  "prerequisites": [],
+  "use_case": "Agent gets optimal execution by routing a swap through 1inch V6, which splits across DEXes for minimal slippage.",
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      {
+        "role": "router",
+        "name": "1inch Aggregation Router V6",
+        "address": "0x111111125421cA6dc452d289314280a0f8842A65"
+      }
+    ],
+    "steps": [
+      {
+        "id": "interact",
+        "action": "call",
+        "target": "$ROUTER",
+        "function": "main",
+        "params": {}
+      }
+    ]
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Tx target is the 1inch Aggregation Router V6. Token balances changed consistent with a swap.",
+    "min_score": 90
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Aerodrome Swap (Base)",
+  "version": "1.0.0",
+  "description": "Swap on Base through Aerodrome — the dominant Solidly-style AMM on Base — via its canonical Router.",
+  "category": "DeFi",
+  "difficulty": "intermediate",
+  "chain": {
+    "id": 8453,
+    "name": "Base"
+  },
+  "prerequisites": [],
+  "use_case": "Agent operating on Base swaps tokens through Aerodrome's router using stable/volatile routes for deep Base-native liquidity.",
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      {
+        "role": "router",
+        "name": "Aerodrome Router",
+        "address": "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43",
+        "abi_fragments": [
+          {
+            "type": "function",
+            "selector": "0xcac88ea9",
+            "stateMutability": "nonpayable"
+          }
+        ]
+      }
+    ],
+    "steps": [
+      {
+        "id": "interact",
+        "action": "call",
+        "target": "$ROUTER",
+        "function": "main",
+        "params": {}
+      }
+    ]
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Tx target is the Aerodrome Router on Base (8453), function swapExactTokensForTokens. Token balances changed consistent with the swap.",
+    "min_score": 90
+  }
+}

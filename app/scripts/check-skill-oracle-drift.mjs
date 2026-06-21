@@ -28,10 +28,10 @@ const SUPPORTED_CHAINS = new Set([1, 42161, 10, 8453, 11155111]);
 
 // Public RPC fallbacks per chain (overridable via RPC_URL_<id>).
 const PUBLIC_RPC = {
-  1: "https://eth.llamarpc.com",
-  42161: "https://arb1.arbitrum.io/rpc",
-  10: "https://mainnet.optimism.io",
-  8453: "https://mainnet.base.org",
+  1: "https://ethereum-rpc.publicnode.com",
+  42161: "https://arbitrum-one-rpc.publicnode.com",
+  10: "https://optimism-rpc.publicnode.com",
+  8453: "https://base-rpc.publicnode.com",
   11155111: "https://ethereum-sepolia-rpc.publicnode.com",
 };
 
@@ -138,6 +138,17 @@ function declaredSelectors(mod) {
 function verificationChainId(mod) {
   return Number(mod?.chain?.id ?? 1);
 }
+/// The oracle only runs on-chain verification (verifyOnChainCall) for skills
+/// whose kind is smart_contract_interaction AND that are not explicitly manual.
+/// Off-chain and manual-review skills declare addresses for documentation only —
+/// the auto-verifier never touches them — so the drift check must skip them too,
+/// otherwise it flags "drift" the oracle would never actually hit.
+function isAutoOnchain(mod) {
+  return (
+    mod?.executable?.kind === "smart_contract_interaction" &&
+    mod?.verification?.auto_verifiable !== false
+  );
+}
 
 const ZERO = "0x0000000000000000000000000000000000000000";
 const codeCache = new Map(); // `${chainId}:${addr}` -> bool
@@ -198,6 +209,9 @@ async function main() {
     } catch {
       continue; // gap / non-existent id
     }
+    // Only the ACTIVE catalogue matters: a deactivated skill is parked, not
+    // sold or completed, so its (possibly stale) spec can't cause live drift.
+    if (skill && skill.isActive === false) continue;
     if (!skill?.contentURI) {
       warn.push(`#${id} ${skill?.name ?? ""}: no contentURI`);
       continue;

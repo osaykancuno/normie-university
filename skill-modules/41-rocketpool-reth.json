@@ -1,0 +1,50 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Rocket Pool rETH Staking",
+  "version": "1.0.0",
+  "description": "Stake ETH into Rocket Pool's decentralised node network and receive rETH, a value-accruing liquid staking token. No 32-ETH minimum, no node to run.",
+  "category": "DeFi",
+  "difficulty": "beginner",
+  "chain": {
+    "id": 1,
+    "name": "Ethereum Mainnet"
+  },
+  "prerequisites": [],
+  "use_case": "Agent has idle ETH. Deposits into Rocket Pool → receives rETH that appreciates vs ETH as staking rewards accrue. Fully decentralised validator set, redeemable on secondary markets any time.",
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      {
+        "role": "deposit_pool",
+        "name": "RocketDepositPool",
+        "address": "0xDD3f50F8A6CafbE9b31a427582963f465E745AF8",
+        "abi_fragments": [
+          {
+            "type": "function",
+            "selector": "0xd0e30db0",
+            "stateMutability": "nonpayable"
+          }
+        ]
+      },
+      {
+        "role": "reth",
+        "name": "rETH",
+        "address": "0xae78736Cd615f374D3085123A210448E74Fc6393"
+      }
+    ],
+    "steps": [
+      {
+        "id": "interact",
+        "action": "call",
+        "target": "$DEPOSIT_POOL",
+        "function": "main",
+        "params": {}
+      }
+    ]
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Tx target is RocketDepositPool, function deposit() (payable). Post-tx rETH.balanceOf(agent) increased.",
+    "min_score": 90
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Renzo ezETH Restaking",
+  "version": "1.0.0",
+  "description": "Restake ETH through Renzo's EigenLayer strategy manager and mint ezETH, a liquid restaking token with diversified AVS exposure.",
+  "category": "DeFi",
+  "difficulty": "intermediate",
+  "chain": {
+    "id": 1,
+    "name": "Ethereum Mainnet"
+  },
+  "prerequisites": [],
+  "use_case": "Agent deposits ETH into Renzo RestakeManager → ezETH → exposure to a managed basket of EigenLayer AVSs without picking operators manually.",
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      {
+        "role": "restake_manager",
+        "name": "Renzo RestakeManager",
+        "address": "0x74a09653A083691711cF8215a6ab074BB4e99ef5",
+        "abi_fragments": [
+          {
+            "type": "function",
+            "selector": "0xf6326fb3",
+            "stateMutability": "nonpayable"
+          }
+        ]
+      },
+      {
+        "role": "ezeth",
+        "name": "ezETH",
+        "address": "0xbf5495Efe5DB9ce00f80364C8B423567e58d2110"
+      }
+    ],
+    "steps": [
+      {
+        "id": "interact",
+        "action": "call",
+        "target": "$RESTAKE_MANAGER",
+        "function": "main",
+        "params": {}
+      }
+    ]
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Tx target is Renzo RestakeManager, function depositETH() (payable). Post-tx ezETH.balanceOf(agent) increased.",
+    "min_score": 90
+  }
+}

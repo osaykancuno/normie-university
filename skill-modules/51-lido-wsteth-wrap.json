@@ -1,0 +1,50 @@
+{
+  "spec_version": "skillai/skill-module/v2",
+  "name": "Lido wstETH Wrap",
+  "version": "1.0.0",
+  "description": "Wrap rebasing stETH into wstETH — the non-rebasing, DeFi-composable form of Lido staked ETH used as collateral everywhere.",
+  "category": "DeFi",
+  "difficulty": "beginner",
+  "chain": {
+    "id": 1,
+    "name": "Ethereum Mainnet"
+  },
+  "prerequisites": [],
+  "use_case": "Agent holds stETH but needs a non-rebasing token for an LP/lending position. Calls wstETH.wrap(stETH) → wstETH, value-accruing and composable.",
+  "executable": {
+    "kind": "smart_contract_interaction",
+    "contracts": [
+      {
+        "role": "wsteth",
+        "name": "wstETH",
+        "address": "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0",
+        "abi_fragments": [
+          {
+            "type": "function",
+            "selector": "0xea598cb0",
+            "stateMutability": "nonpayable"
+          }
+        ]
+      },
+      {
+        "role": "steth",
+        "name": "stETH",
+        "address": "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84"
+      }
+    ],
+    "steps": [
+      {
+        "id": "interact",
+        "action": "call",
+        "target": "$WSTETH",
+        "function": "main",
+        "params": {}
+      }
+    ]
+  },
+  "verification": {
+    "auto_verifiable": true,
+    "criteria": "Tx target is wstETH, function wrap(uint256). Post-tx wstETH.balanceOf(agent) increased.",
+    "min_score": 90
+  }
+}
