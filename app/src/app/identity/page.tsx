@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { IS_COMING_SOON } from "@/config/launch";
+import LiveBindingDemo from "@/components/identity/LiveBindingDemo";
 
 type Identity = {
   token: string; tokenId: string; exists: boolean; owner: string | null;
@@ -51,6 +53,12 @@ export default function IdentityPage() {
           real Normies at the mainnet launch.
         </p>
       </header>
+
+      {!IS_COMING_SOON && (
+        <div className="mb-6">
+          <LiveBindingDemo />
+        </div>
+      )}
 
       <div className="flex flex-wrap items-end gap-3 border border-line-strong bg-surface p-4">
         <label className="text-sm text-ink-soft">

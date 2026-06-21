@@ -6,6 +6,7 @@ import { useAccount, useSendTransaction, useSwitchChain, useWaitForTransactionRe
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { Badge } from "@/components/ui/badge";
 import { IS_COMING_SOON } from "@/config/launch";
+import { getAddresses } from "@/lib/contracts";
 
 type Tx = { to: string; value: string; data: string; functionName: string; needsApproval?: string };
 type Plan = {
@@ -34,7 +35,7 @@ const DIFF = ["Beginner", "Intermediate", "Advanced", "Expert"];
 
 /// The live execution flow: connect → (right chain) → sign the exact tx →
 /// wait for confirmation → ask the oracle to verify + mint the credential.
-function ExecutePanel({ plan }: { plan: Plan }) {
+function ExecutePanel({ plan, normieId }: { plan: Plan; normieId?: string }) {
   const { address, isConnected, chainId } = useAccount();
   const { switchChain, isPending: switching } = useSwitchChain();
   const { sendTransactionAsync, isPending: signing } = useSendTransaction();
@@ -53,17 +54,31 @@ function ExecutePanel({ plan }: { plan: Plan }) {
     (async () => {
       setCompleting(true);
       try {
+        // Normie-native completion: route the credential to the Normie's agent
+        // identity (so it follows the NFT) instead of the earning wallet.
+        let completeBody: Record<string, unknown> = { agent: address, txHash: hash };
+        if (normieId) {
+          const id = await fetch(`/api/agent-identity?tokenId=${encodeURIComponent(normieId)}`).then((x) => x.json());
+          if (!id?.identity) throw new Error("That Normie isn't bound to an agent identity yet");
+          const mock = getAddresses().MockNormies;
+          await fetch("/api/identity/sponsor", {
+            method: "POST", headers: { "content-type": "application/json" },
+            body: JSON.stringify({ agentToken: mock, agentTokenId: normieId, skillId: plan.skillId }),
+          }).catch(() => null); // best-effort; already-sponsored is fine
+          completeBody = { agent: id.identity, agentToken: mock, agentTokenId: normieId, txHash: hash };
+        }
         const r = await fetch(`/api/skills/${plan.skillId}/complete`, {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ agent: address, txHash: hash }),
+          body: JSON.stringify(completeBody),
         });
         const j = await r.json();
         if (cancelled) return;
-        if (r.ok && (j.txHash || j.ok)) setDone({ ok: true, msg: `Credential #${plan.skillId} issued to your agent.` });
+        if (r.ok && (j.txHash || j.ok))
+          setDone({ ok: true, msg: normieId ? `Credential #${plan.skillId} earned for Normie #${normieId}.` : `Credential #${plan.skillId} issued to your agent.` });
         else setDone({ ok: false, msg: j.error || j.reason || "Verification did not pass." });
-      } catch {
-        if (!cancelled) setDone({ ok: false, msg: "Could not reach the verifier." });
+      } catch (e) {
+        if (!cancelled) setDone({ ok: false, msg: e instanceof Error ? e.message : "Could not reach the verifier." });
       } finally {
         if (!cancelled) setCompleting(false);
       }
@@ -180,6 +195,7 @@ function formatEth(wei: string): string {
 export default function ConsolePage() {
   const [instruction, setInstruction] = useState("");
   const [agent, setAgent] = useState("");
+  const [normieId, setNormieId] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<PlanResult | null>(null);
 
@@ -235,7 +251,13 @@ export default function ConsolePage() {
             value={agent}
             onChange={(e) => setAgent(e.target.value)}
             placeholder="Agent address (optional — checks your credentials)"
-            className="mono min-w-[260px] flex-1 border border-line bg-paper px-3 py-1.5 text-xs text-ink outline-none placeholder:text-ink-faint focus:border-line-strong"
+            className="mono min-w-[220px] flex-1 border border-line bg-paper px-3 py-1.5 text-xs text-ink outline-none placeholder:text-ink-faint focus:border-line-strong"
+          />
+          <input
+            value={normieId}
+            onChange={(e) => setNormieId(e.target.value)}
+            placeholder="Earn for Normie # (optional)"
+            className="mono w-44 border border-line bg-paper px-3 py-1.5 text-xs text-ink outline-none placeholder:text-ink-faint focus:border-line-strong"
           />
           <button
             onClick={() => plan()}
@@ -283,7 +305,7 @@ export default function ConsolePage() {
       )}
 
       {result && result.ok && (
-        <PlanView result={result} onPick={(t) => plan(t)} />
+        <PlanView result={result} onPick={(t) => plan(t)} normieId={normieId.trim() || undefined} />
       )}
 
       <p className="mt-8 text-xs mono text-ink-muted">
@@ -295,7 +317,7 @@ export default function ConsolePage() {
   );
 }
 
-function PlanView({ result, onPick }: { result: Extract<PlanResult, { ok: true }>; onPick: (t: string) => void }) {
+function PlanView({ result, onPick, normieId }: { result: Extract<PlanResult, { ok: true }>; onPick: (t: string) => void; normieId?: string }) {
   const p = result.plan;
   const pct = Math.round(p.confidence * 100);
   return (
@@ -406,7 +428,7 @@ function PlanView({ result, onPick }: { result: Extract<PlanResult, { ok: true }
             </button>
           </div>
         ) : (
-          <ExecutePanel plan={p} />
+          <ExecutePanel plan={p} normieId={normieId} />
         )}
       </div>
 
