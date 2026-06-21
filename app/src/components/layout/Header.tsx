@@ -17,6 +17,7 @@ const IS_TESTNET = (ACTIVE_CHAIN.id as number) !== 1 && (ACTIVE_CHAIN.id as numb
 
 /// Tier 1 — always visible on desktop, also surfaced in mobile menu.
 const NAV_LINKS_PRIMARY = [
+  { href: "/console",   label: "Console" },
   { href: "/skills",    label: "Catalogue" },
   { href: "/agents",    label: "Agents" },
   { href: "/use-cases", label: "Use cases" },

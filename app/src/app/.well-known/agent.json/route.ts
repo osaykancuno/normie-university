@@ -39,6 +39,7 @@ export async function GET(req: NextRequest) {
     endpoints: {
       health:       `${origin}/api/health`,
       stats:        `${origin}/api/stats`,
+      consolePlan:  `${origin}/api/console/plan`,
       catalogue:    `${origin}/api/skills`,
       skill:        `${origin}/api/skills/{id}`,
       trending:     `${origin}/api/marketplace/trending`,
