@@ -90,12 +90,16 @@ export async function loadSkillModule(skillId: bigint): Promise<SkillModule | nu
     ipfsToHttp(skill.contentURI, SECOND_GW),
   ].filter((u): u is string => !!u);
 
-  for (const url of urls) {
-    const json = await fetchJson(url);
-    if (json && typeof json === "object") {
-      const mod = json as SkillModule;
-      cache.set(key, mod);
-      return mod;
+  // Two passes over the gateways: a cold IPFS fetch occasionally times out, and
+  // a transient miss here would fail an otherwise-valid completion.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    for (const url of urls) {
+      const json = await fetchJson(url);
+      if (json && typeof json === "object") {
+        const mod = json as SkillModule;
+        cache.set(key, mod);
+        return mod;
+      }
     }
   }
   return null;

@@ -49,6 +49,10 @@ export type VerifyRequest = {
   agent: Address;
   skillId: bigint;
   txHash?: Hex;
+  /// Who is expected to have SENT the skill transaction. Defaults to `agent`.
+  /// For an NFT-bound agent the credential mints to the identity (`agent`) while
+  /// the action is performed by the current controller, so `actor` = controller.
+  actor?: Address;
 };
 
 export type VerifyOk = {
@@ -119,8 +123,13 @@ async function verifyOnChainCall(
   if (receipt.status !== "success") {
     return { pass: false, reason: "Transaction reverted on-chain" };
   }
-  if (receipt.from.toLowerCase() !== req.agent.toLowerCase()) {
-    return { pass: false, reason: "Transaction was not sent by the claimed agent" };
+  // The action must be sent by the actor (the controller for a bound agent,
+  // otherwise the agent itself). This is what lets a Normie owner earn skills
+  // FOR the NFT identity: they perform the tx, the credential mints to the
+  // identity, and only the current owner can do so.
+  const expectedSender = (req.actor ?? req.agent).toLowerCase();
+  if (receipt.from.toLowerCase() !== expectedSender) {
+    return { pass: false, reason: "Transaction was not sent by the agent's controller" };
   }
 
   // FAIL-CLOSED: a contract-interaction skill that declares no usable target

@@ -14,6 +14,7 @@
 import { isAddress } from "viem";
 import { isVerifierConfigured, verifySkillCompletion } from "@/lib/server/verifier";
 import { isRelayerConfigured, relayCompleteFor, relayerAddress } from "@/lib/server/relayer";
+import { resolveBoundAgent } from "@/lib/server/binding";
 
 export async function POST(
   req: Request,
@@ -40,9 +41,9 @@ export async function POST(
     );
   }
 
-  let body: { agent?: string; txHash?: string };
+  let body: { agent?: string; txHash?: string; agentToken?: string; agentTokenId?: string };
   try {
-    body = (await req.json()) as { agent?: string; txHash?: string };
+    body = (await req.json()) as typeof body;
   } catch {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
@@ -58,11 +59,34 @@ export async function POST(
     txHash = body.txHash as `0x${string}`;
   }
 
+  // NFT-bound agent: when the caller names a bound NFT, the credential mints to
+  // the NFT's IDENTITY (which follows the NFT) and the action must have been
+  // performed by the current CONTROLLER (owner). `agent` must equal the identity.
+  let actor: `0x${string}` | undefined;
+  if (body.agentToken && body.agentTokenId) {
+    let tokenId: bigint;
+    try { tokenId = BigInt(body.agentTokenId); } catch {
+      return Response.json({ error: "Invalid 'agentTokenId'" }, { status: 400 });
+    }
+    const bound = await resolveBoundAgent(body.agentToken, tokenId);
+    if (!bound) {
+      return Response.json({ error: "NFT is not bound to an agent identity" }, { status: 400 });
+    }
+    if (bound.identity.toLowerCase() !== (body.agent as string).toLowerCase()) {
+      return Response.json(
+        { error: "'agent' must be the identity bound to this NFT", expected: bound.identity },
+        { status: 400 }
+      );
+    }
+    actor = bound.controller; // the action must come from the current owner
+  }
+
   // Step 1: ask the verifier to evaluate the rule and sign on success
   const verified = await verifySkillCompletion({
     agent: body.agent as `0x${string}`,
     skillId,
     txHash,
+    actor,
   });
   if (!verified.ok) {
     return Response.json(verified, { status: 422 });
