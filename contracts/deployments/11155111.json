@@ -13,5 +13,7 @@
   "pathRegistry": "0x16555d59EaE75Ebba1B07dD46520C42Be6a59472",
   "pixelOracleAnchor": "0x6dFba1A2072E356DeDa9457B1007bAD58315dE14",
   "anchorUniversitySigner": "0x807F53784dA0B74001e0de5f86571794a83Aa4D2",
-  "anchorOracleSigner": "0x7989590052cA564dC979C53794209043511Ef697"
+  "anchorOracleSigner": "0x7989590052cA564dC979C53794209043511Ef697",
+  "normieAgentBinding": "0xf7b279ed24c1a1be50e3c7992f8bd899853c98ee",
+  "mockNormies": "0xdb92e692b17b09be985edefd3ce81bf82b5ad6c2"
 }

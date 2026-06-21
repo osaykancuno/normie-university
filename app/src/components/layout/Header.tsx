@@ -28,6 +28,7 @@ const NAV_LINKS_PRIMARY = [
 /// Learning Paths intentionally hidden while we're on testnet — re-enable
 /// once the bundled-purchase flow ships with real USDC on mainnet.
 const NAV_LINKS_SECONDARY = [
+  { href: "/identity",          label: "Identity" },
   { href: "/reputation",        label: "Leaderboard" },
   { href: "/community/normies", label: "Normies" },
   { href: "/developers",        label: "Developers" },
