@@ -48,11 +48,11 @@ const SAMPLE_COMPLETE = `curl -X POST https://your-skillai-domain/api/skills/5/c
 const SAMPLE_SDK = `import { SkillaiClient, x402Buy, x402Complete } from "@skillai/sdk";
 import { createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { baseSepolia } from "viem/chains";
+import { sepolia } from "viem/chains";
 
 const account = privateKeyToAccount(process.env.AGENT_PK);
 const walletClient = createWalletClient({
-  account, chain: baseSepolia, transport: http(process.env.RPC_URL),
+  account, chain: sepolia, transport: http(process.env.RPC_URL),
 });
 
 const client = new SkillaiClient({ baseUrl: "https://your-skillai-domain" });
