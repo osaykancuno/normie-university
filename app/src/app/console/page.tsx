@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useAccount, useSendTransaction, useSwitchChain, useWaitForTransactionReceipt } from "wagmi";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { Badge } from "@/components/ui/badge";
 import { IS_COMING_SOON } from "@/config/launch";
 
@@ -29,6 +31,130 @@ const EXAMPLES = [
 ];
 
 const DIFF = ["Beginner", "Intermediate", "Advanced", "Expert"];
+
+/// The live execution flow: connect → (right chain) → sign the exact tx →
+/// wait for confirmation → ask the oracle to verify + mint the credential.
+function ExecutePanel({ plan }: { plan: Plan }) {
+  const { address, isConnected, chainId } = useAccount();
+  const { switchChain, isPending: switching } = useSwitchChain();
+  const { sendTransactionAsync, isPending: signing } = useSendTransaction();
+  const [hash, setHash] = useState<`0x${string}` | undefined>();
+  const { data: receipt, isLoading: confirming } = useWaitForTransactionReceipt({ hash });
+  const [completing, setCompleting] = useState(false);
+  const [done, setDone] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const isMainnet = plan.chainId === 1;
+
+  // Once the tx confirms, ask the oracle to verify it and mint the credential.
+  useEffect(() => {
+    if (receipt?.status !== "success" || !hash || !address || completing || done) return;
+    let cancelled = false;
+    (async () => {
+      setCompleting(true);
+      try {
+        const r = await fetch(`/api/skills/${plan.skillId}/complete`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ agent: address, txHash: hash }),
+        });
+        const j = await r.json();
+        if (cancelled) return;
+        if (r.ok && (j.txHash || j.ok)) setDone({ ok: true, msg: `Credential #${plan.skillId} issued to your agent.` });
+        else setDone({ ok: false, msg: j.error || j.reason || "Verification did not pass." });
+      } catch {
+        if (!cancelled) setDone({ ok: false, msg: "Could not reach the verifier." });
+      } finally {
+        if (!cancelled) setCompleting(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [receipt?.status, hash, address]);
+
+  if (!plan.tx) {
+    return <p className="text-sm text-ink-soft">Add an amount to your instruction (e.g. &ldquo;wrap 0.01 ETH&rdquo;) so the exact transaction can be built.</p>;
+  }
+  if (plan.tx.needsApproval) {
+    return (
+      <p className="text-sm text-ink-soft">
+        This action needs a one-time <span className="mono">{plan.tx.needsApproval}</span> approval before the deposit.
+        Token-approval signing lands next — for an end-to-end test, try an ETH action like <span className="mono">&ldquo;wrap 0.01 ETH to WETH&rdquo;</span>.
+      </p>
+    );
+  }
+  if (!isConnected) {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="text-sm text-ink-soft">Connect a wallet to sign this transaction on {plan.chainName}.</div>
+        <ConnectButton showBalance={false} label="Connect wallet" />
+      </div>
+    );
+  }
+  if (chainId !== plan.chainId) {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="text-sm font-semibold text-ink">Wrong network</div>
+          <p className="mt-1 text-xs text-ink-soft">
+            This skill runs on {plan.chainName}.{" "}
+            {isMainnet && <span className="text-ink">⚠ Ethereum mainnet — this would spend REAL funds.</span>}
+          </p>
+        </div>
+        <button
+          onClick={() => switchChain({ chainId: plan.chainId })}
+          disabled={switching}
+          className="border border-line-strong bg-ink px-5 py-2 text-sm font-semibold text-paper hover:opacity-90 disabled:opacity-40 mono"
+        >
+          {switching ? "Switching…" : `Switch to ${plan.chainName}`}
+        </button>
+      </div>
+    );
+  }
+
+  if (done) {
+    return (
+      <div className={done.ok ? "text-sm text-ink" : "text-sm text-ink-soft"}>
+        <span className="mono mr-2">{done.ok ? "✓" : "✗"}</span>{done.msg}
+        {hash && (
+          <a href={`https://sepolia.etherscan.io/tx/${hash}`} target="_blank" rel="noopener noreferrer" className="mono ml-2 text-xs text-ink underline decoration-line-strong underline-offset-2">tx →</a>
+        )}
+      </div>
+    );
+  }
+
+  const busy = signing || confirming || completing;
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="text-sm text-ink-soft">
+        {signing && "Confirm in your wallet…"}
+        {confirming && "Waiting for confirmation…"}
+        {completing && "Verifying on-chain & minting credential…"}
+        {!busy && `Sign to ${plan.action.verb} on ${plan.chainName}.`}
+        {err && <span className="mt-1 block text-ink">{err}</span>}
+      </div>
+      <button
+        disabled={busy}
+        onClick={async () => {
+          setErr(null);
+          try {
+            const h = await sendTransactionAsync({
+              to: plan.tx!.to as `0x${string}`,
+              value: BigInt(plan.tx!.value),
+              data: plan.tx!.data as `0x${string}`,
+            });
+            setHash(h);
+          } catch (e) {
+            setErr(e instanceof Error ? e.message.split("\n")[0] : "Transaction rejected.");
+          }
+        }}
+        className="border border-line-strong bg-ink px-5 py-2 text-sm font-semibold text-paper hover:opacity-90 disabled:opacity-40 mono"
+      >
+        {busy ? "Working…" : "Sign & execute →"}
+      </button>
+    </div>
+  );
+}
 
 function Row({ k, v }: { k: string; v: string }) {
   return (
@@ -264,7 +390,7 @@ function PlanView({ result, onPick }: { result: Extract<PlanResult, { ok: true }
         </ul>
       </div>
 
-      {/* execute (gated) */}
+      {/* execute */}
       <div className="border border-line-strong bg-surface p-5">
         {IS_COMING_SOON ? (
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -280,12 +406,7 @@ function PlanView({ result, onPick }: { result: Extract<PlanResult, { ok: true }
             </button>
           </div>
         ) : (
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="text-sm text-ink-soft">Review the plan above, then sign to execute on {p.chainName}.</div>
-            <button className="border border-line-strong bg-ink px-5 py-2 text-sm font-semibold text-paper hover:opacity-90 mono">
-              Sign &amp; execute →
-            </button>
-          </div>
+          <ExecutePanel plan={p} />
         )}
       </div>
 

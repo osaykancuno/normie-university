@@ -167,17 +167,13 @@ function detectVerb(tokens: string[]): string | null {
 }
 
 function detectAmountAsset(raw: string): { amount?: string; asset?: string } {
-  const m = raw.match(/(\d[\d.,]*)\s*([a-zA-Z]{2,6})?/);
-  let amount: string | undefined;
-  let asset: string | undefined;
-  if (m) {
-    amount = m[1].replace(/,/g, "");
-    if (m[2] && ASSETS.includes(m[2].toLowerCase())) asset = m[2].toUpperCase();
-  }
-  if (!asset) {
-    const a = ASSETS.find((sym) => new RegExp(`\\b${sym}\\b`, "i").test(raw));
-    if (a) asset = a.toUpperCase();
-  }
+  const amt = raw.match(/(\d[\d.,]*)/);
+  const amount = amt ? amt[1].replace(/,/g, "") : undefined;
+  // Asset = the MOST SPECIFIC symbol present (longest match), independent of the
+  // amount, so "wrap 0.01 ETH to WETH" resolves to WETH (target), not ETH.
+  const present = ASSETS.filter((sym) => new RegExp(`\\b${sym}\\b`, "i").test(raw))
+    .sort((a, b) => b.length - a.length);
+  const asset = present[0] ? present[0].toUpperCase() : undefined;
   return { amount, asset };
 }
 
@@ -205,9 +201,16 @@ async function getCatalogue(): Promise<Entry[]> {
   const skills = await listSkills({ limit: 200, onlyActive: true });
   // Load every module in PARALLEL — sequential IPFS fetches made the first
   // request unusably slow (32 round-trips). One fan-out, then cache for 5 min.
-  const mods = await Promise.all(
+  let mods = await Promise.all(
     skills.map((s) => loadSkillModule(BigInt(s.skillId)).catch(() => null))
   );
+  // Retry the cold-misses once: an IPFS gateway occasionally times out on the
+  // first fetch, which would otherwise silently drop a skill from the console.
+  if (mods.some((m) => m === null)) {
+    mods = await Promise.all(
+      mods.map((m, i) => (m ? m : loadSkillModule(BigInt(skills[i].skillId)).catch(() => null)))
+    );
+  }
   const entries: Entry[] = [];
   skills.forEach((skill, i) => {
     const mod = mods[i];
@@ -227,6 +230,10 @@ function score(tokens: string[], verb: string | null, asset: string | undefined,
     else if ([...e.keywords].some((k) => k.includes(t) || t.includes(k))) s += 1; // partial
   }
   if (asset && e.keywords.has(asset.toLowerCase())) s += 2;
+  // A SPECIFIC asset symbol appearing in the skill NAME is a very strong signal
+  // (disambiguates "wrap ETH→WETH" #54 from "wrap stETH→wstETH" #51). Skip the
+  // generic "ETH" — it appears in almost every name and would add no signal.
+  if (asset && asset !== "ETH" && e.skill.name.toLowerCase().includes(asset.toLowerCase())) s += 5;
   // verb affinity: bias families by skill name/category. The action word
   // appearing literally in the skill NAME is the strongest signal; protocol
   // families are a weaker, secondary bias.
