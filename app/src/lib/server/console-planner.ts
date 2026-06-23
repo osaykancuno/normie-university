@@ -178,48 +178,40 @@ function detectAmountAsset(raw: string): { amount?: string; asset?: string } {
 }
 
 // ---------------------------------------------------------------------------
-// Catalogue cache: active skills + their modules (immutable per CID, short TTL).
+// Catalogue cache: active skills keyed by their ON-CHAIN NAME only. Matching
+// never needs the IPFS module — only the WINNING skill's module is fetched (at
+// plan time), so a cold serverless invocation makes ~1 IPFS round-trip instead
+// of one per skill. The skill list itself is one multicall.
 // ---------------------------------------------------------------------------
-type Entry = { skill: ApiSkill; module: SkillModule | null; keywords: Set<string> };
+type Entry = { skill: ApiSkill; keywords: Set<string> };
 let CACHE: { at: number; entries: Entry[] } | null = null;
 const TTL_MS = 5 * 60_000;
 
-function moduleKeywords(skill: ApiSkill, mod: SkillModule | null): Set<string> {
+function nameKeywords(skill: ApiSkill): Set<string> {
   const kw = new Set<string>();
   const add = (s?: string) => { if (s) tokenize(s).forEach((t) => { if (!STOPWORDS.has(t) && t.length > 1) kw.add(t); }); };
   add(skill.name);
-  add(mod?.name);
-  add(mod?.category);
-  for (const c of mod?.executable?.contracts ?? []) { add(c.name); add(c.role); }
-  // protocol tokens often live in the use_case / description
-  add(mod?.verification?.criteria);
+  add(skill.category?.label);
   return kw;
 }
 
 async function getCatalogue(): Promise<Entry[]> {
   if (CACHE && Date.now() - CACHE.at < TTL_MS) return CACHE.entries;
   const skills = await listSkills({ limit: 200, onlyActive: true });
-  // Load every module in PARALLEL — sequential IPFS fetches made the first
-  // request unusably slow (32 round-trips). One fan-out, then cache for 5 min.
-  let mods = await Promise.all(
-    skills.map((s) => loadSkillModule(BigInt(s.skillId)).catch(() => null))
-  );
-  // Retry the cold-misses once: an IPFS gateway occasionally times out on the
-  // first fetch, which would otherwise silently drop a skill from the console.
-  if (mods.some((m) => m === null)) {
-    mods = await Promise.all(
-      mods.map((m, i) => (m ? m : loadSkillModule(BigInt(skills[i].skillId)).catch(() => null)))
-    );
-  }
-  const entries: Entry[] = [];
-  skills.forEach((skill, i) => {
-    const mod = mods[i];
-    // Only on-chain auto-verifiable skills are executable from the console.
-    if (mod?.executable?.kind !== "smart_contract_interaction") return;
-    entries.push({ skill, module: mod, keywords: moduleKeywords(skill, mod) });
-  });
+  const entries: Entry[] = skills.map((skill) => ({ skill, keywords: nameKeywords(skill) }));
   CACHE = { at: Date.now(), entries };
   return entries;
+}
+
+/// Prime the catalogue cache so the first user request is fast. Safe to call
+/// from a warmup route; never throws.
+export async function warmConsoleCatalogue(): Promise<number> {
+  try {
+    const entries = await getCatalogue();
+    return entries.length;
+  } catch {
+    return 0;
+  }
 }
 
 function score(tokens: string[], verb: string | null, asset: string | undefined, e: Entry): number {
@@ -239,7 +231,12 @@ function score(tokens: string[], verb: string | null, asset: string | undefined,
   // families are a weaker, secondary bias.
   const name = e.skill.name.toLowerCase();
   if (verb === "stake") { if (/stak/.test(name)) s += 4; else if (/steth|reth|eeth/.test(name)) s += 2; }
-  if (verb === "restake") { if (/restak/.test(name)) s += 4; else if (/ezeth|rseth|eigen/.test(name)) s += 2; }
+  if (verb === "restake") {
+    if (/restak/.test(name)) s += 6;
+    else if (/ezeth|rseth|eigen|renzo|kelp/.test(name)) s += 4;
+    // plain liquid STAKING is not RE-staking — don't let it win a restake intent
+    if (/liquid staking|wsteth| stake\b/.test(name) && !/restak/.test(name)) s -= 3;
+  }
   if (verb === "swap") {
     if (/swap/.test(name)) s += 4;
     else if (/router|1inch|balancer|aerodrome|velodrome|aggregat/.test(name)) s += 2;
@@ -335,9 +332,13 @@ export async function planInstruction(instruction: string, agent?: string): Prom
   }
 
   const { e } = top;
-  const contract = primaryContract(e.module);
-  const sel = primarySelector(e.module);
-  const chainId = Number(e.module?.chain?.id ?? 1);
+  // Load ONLY the winning skill's module (1 IPFS round-trip, retried) — this is
+  // what keeps the cold-start fast. Everything below degrades gracefully if the
+  // module can't be fetched (plan still shows the skill, just without a tx).
+  const mod = await loadSkillModule(BigInt(e.skill.skillId)).catch(() => null);
+  const contract = primaryContract(mod);
+  const sel = primarySelector(mod);
+  const chainId = Number(mod?.chain?.id ?? 1);
   const chainName = CHAIN_NAME[chainId] ?? `chain ${chainId}`;
   const verbLabel = verb ?? "interact with";
 
@@ -363,7 +364,7 @@ export async function planInstruction(instruction: string, agent?: string): Prom
     tx,
     preview: `${cap(verbLabel)} ${amountStr} via ${e.skill.name} on ${chainName}.`,
     steps: buildSteps(verbLabel, amountStr, e.skill.name, contract?.name, sel.functionName),
-    outcome: e.module?.verification?.criteria
+    outcome: mod?.verification?.criteria
       ? `On success the oracle verifies the on-chain action and mints credential #${e.skill.skillId} to your agent, updating its on-chain reputation.`
       : `Mints credential #${e.skill.skillId} to your agent on success.`,
     safety: [
