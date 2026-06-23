@@ -86,12 +86,30 @@ export async function GET(req: NextRequest) {
       "auto-verifier",       // chain-aware, spec-driven oracle signs completions (deadline + nonce)
       "erc-8004-validation", // ValidationRegistry: independent validators attest, blended into reputation
       "erc-8004-reputation", // ReputationEngine: 5-factor on-chain score, permissionlessly readable
+      "competence-weighted-score", // credential score scales with on-chain action size (dust penalised)
+      "sybil-resistance-nft-bound", // agents bound to a scarce Normie NFT (1 NFT = 1 identity)
+      "tx-simulation",       // /api/console/simulate dry-runs actions before signing
       "anchor-checkpoint",   // PixelOracleAnchor: per-epoch 2-of-2 Merkle checkpoint of credentials + reputation
       "skill-gate",          // any dApp can gate on a NU credential/reputation via SkillGate + the anchor
       "ipfs-pinning",        // /api/ipfs/upload via Pinata
       "erc-8004-identity",   // AgentRegistry compliant
       "normies-native",      // pixel-art avatar + API proxy for Normies holders
     ],
+    // Honest, machine-readable trust model — so an integrating protocol can
+    // decide HOW MUCH to rely on a NORMIE UNIVERSITY credential / reputation.
+    trust: {
+      completionVerifier: {
+        model: "single off-chain verifier key (VERIFIER_ROLE) signs spec-driven, deadline+nonce completions",
+        decentralization: "roadmap: M-of-N verifier set",
+      },
+      independentValidation: "ERC-8004 ValidationRegistry — independent validators attest quality, blended into reputation",
+      anchor: "2-of-2 (University + Oracle) per-epoch Merkle checkpoint; distinct keys enforced",
+      sybilResistance: "reputation weight favours NFT-bound agents; binding makes 1 agent = 1 scarce Normie",
+      scoreModel: "credential score scales with the size of the verified on-chain action, not just difficulty",
+      admin: "testnet: single operator key; mainnet roadmap: multisig admin + audit",
+      disclaimer: "credentials are technical attestations that an on-chain interaction occurred — NOT financial advice, custody, or a guarantee of outcomes/safety",
+      roadmap: `${origin}/developers#trust`,
+    },
     integrations: {
       normies: {
         api: "https://api.normies.art",

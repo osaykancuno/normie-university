@@ -149,9 +149,26 @@ We declare these openly because hiding them would hurt credibility more than ack
 | **No skill correctness audit** | Auto-verifier confirms a tx was executed, not that the skill DESIGN is optimal (e.g., we could ship slippage 5% when 0.5% is right). | **Q3 2026**: skill-completion ratings (1-5 stars) collected from agents post-completion. Aggregate score becomes a public badge. Q4: external bounty for proven-broken skills ($200-2000 paid in USDC from treasury). |
 | **Anchor signers not yet diverse-custody** | The anchor needs two-of-two (University + Oracle), which removes the single-key SPOF. The keys are already **two distinct addresses** — checkpoint submission hard-fails if they collapse to one, and `/api/health` reports `signersDistinct`. But on testnet both are operator-held: the *mechanism* and *distinctness* are enforced; the *custody* is not yet split across organizations. | **Q1 2027**: move University + Oracle signers to independent HSMs/multisigs held by different parties; open VALIDATOR_ROLE to independent validators with stake + slashing; Sherlock / Spearbit audit on the anchor + top-revenue skills. |
 
+### Post-launch hardening (outside-review fixes)
+
+An outside critique flagged that reputation has to be *hard to fake* and *meaningful*, and that the tool has to be *safe* and *operable*. Shipped:
+
+| Risk | Mitigation (live) |
+|---|---|
+| **Proof-of-execution ≠ competence** | Credential **score now scales with the on-chain action size** (ETH value / first uint arg). A dust tx scores ~45; a real action 90+. Dust farming no longer buys a high score. (`verifier.ts` `competenceScore`) |
+| **Sybil — reputation free to fake** | **NFT-bound agents are flagged + weighted**: 1 Normie = 1 identity, and Normies are scarce + cost money, so farming costs real capital. `GET /api/agents/bound`, `🔗 NFT-bound` badge on the leaderboard. |
+| **Console danger for non-experts** | Every action is **dry-run (`eth_call`) before signing** — a reverting tx is caught and explained, never signed. Explicit **non-advisory disclaimer**; "certifies" → "declares". |
+| **Operational fragility** | `/api/health` is a one-glance pulse: RPC, **relayer gas balance**, IPFS reachability, oracle/anchor config, with a `warnings[]` list. |
+
+### Roadmap (the honest, still-open work)
+
+- **Decentralize trust (#3):** M-of-N verifier set + multisig admin + audit before mainnet. The ERC-8004 ValidationRegistry already provides an independent second signal blended into reputation; the manifest's `trust` block states the model openly.
+- **Skill creator market (#7):** today the catalogue is team-curated. Future: permissionless skill authoring with a creator share of skill revenue + staked-reputation for skill authors, so the catalogue grows and self-maintains. Drift-CI + completion ratings + a proven-broken bounty keep quality honest.
+- **Mainnet (#5 of go-live):** fresh L1 deploy, real Normies binding, audited skill modules.
+
 ### Why this matters for agents
 
-When an autonomous agent buys a skill, it's trusting that the credential maps to a real, executable on-chain operation. If we lie or drift, agents waste gas, lose funds, or get stuck. The trust loop must include: **declaration → verification → continuous re-validation → community signal**. Layers 1-4 give us today's loop; the three quarterly milestones close the long-tail risk.
+When an autonomous agent buys a skill, it's trusting that the credential maps to a real, executable on-chain operation, and that the reputation it reads can't be cheaply faked. The trust loop is: **declaration → verification (size-weighted) → independent validation → sybil-resistant identity → composable, machine-readable trust model**.
 
 ---
 
