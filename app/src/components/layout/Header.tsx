@@ -45,16 +45,28 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-paper/90 backdrop-blur">
-      {/* Preview ribbon — makes it unmistakable the product isn't live yet */}
+      {/* Stage ribbon — keep the current (testnet) vs projected (mainnet) state
+          unmistakable. Coming-soon → "launching"; live-on-testnet → "rehearsal". */}
       {(IS_TESTNET || IS_COMING_SOON) && (
         <div className="border-b border-line bg-canvas">
           <div className="mx-auto flex max-w-7xl items-center justify-center gap-2 px-3 py-1 text-[11px] sm:px-6 lg:px-8">
             <span className="inline-block h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-[color:var(--accent-warn)]" />
             <span className="mono truncate uppercase tracking-wider text-ink-soft">
-              <span className="sm:hidden">Public preview · launching soon</span>
-              <span className="hidden sm:inline">
-                Public preview — wallet connect &amp; skill purchases launch with the mainnet release. Browsing is free, no wallet needed.
-              </span>
+              {IS_COMING_SOON ? (
+                <>
+                  <span className="sm:hidden">Public preview · launching soon</span>
+                  <span className="hidden sm:inline">
+                    Public preview — wallet connect &amp; skill purchases launch with the mainnet release. Browsing is free, no wallet needed.
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="sm:hidden">Live on Sepolia testnet · mainnet soon</span>
+                  <span className="hidden sm:inline">
+                    Live on Sepolia testnet — a full rehearsal of the protocol with TEST funds. Real Normies &amp; USDC arrive with the Ethereum mainnet launch.
+                  </span>
+                </>
+              )}
             </span>
           </div>
         </div>
@@ -72,7 +84,7 @@ export function Header() {
           </span>
           {(IS_COMING_SOON || IS_TESTNET) && (
             <span className="ml-1 hidden border border-[color:var(--accent-warn)] bg-paper px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[color:var(--accent-warn)] mono md:inline-block">
-              preview
+              {IS_COMING_SOON ? "preview" : "testnet"}
             </span>
           )}
           {demo && !IS_TESTNET && !IS_COMING_SOON && (

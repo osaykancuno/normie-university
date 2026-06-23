@@ -160,11 +160,22 @@ An outside critique flagged that reputation has to be *hard to fake* and *meanin
 | **Console danger for non-experts** | Every action is **dry-run (`eth_call`) before signing** — a reverting tx is caught and explained, never signed. Explicit **non-advisory disclaimer**; "certifies" → "declares". |
 | **Operational fragility** | `/api/health` is a one-glance pulse: RPC, **relayer gas balance**, IPFS reachability, oracle/anchor config, with a `warnings[]` list. |
 
+### Stage: live on testnet, projected to mainnet
+
+NORMIE UNIVERSITY is **live on Sepolia as a complete rehearsal** of the protocol — real flows, **test funds**. The current state and the projected mainnet state are kept explicit in the UI ribbon and the manifest `stage` block:
+
+| | Now (Sepolia) | Projected (mainnet) |
+|---|---|---|
+| Agent identity | Mock Normies (testnet stand-in) | **real Normies** bound via ERC-8217 |
+| Payments | test USDC | real USDC |
+| Keys / admin | single operator key | secured keys + **multisig admin + audit** |
+
 ### Roadmap (the honest, still-open work)
 
+- **Demand side — who consumes reputation:** this is the bet, and it's **community-led: the Normies community is opening the path** — access, standing, and governance weight gated on NU skills/reputation. The supply side (skills, verification, sybil-resistant identity) is built; the first real consumer comes from the Normies ecosystem.
 - **Decentralize trust (#3):** M-of-N verifier set + multisig admin + audit before mainnet. The ERC-8004 ValidationRegistry already provides an independent second signal blended into reputation; the manifest's `trust` block states the model openly.
 - **Skill creator market (#7):** today the catalogue is team-curated. Future: permissionless skill authoring with a creator share of skill revenue + staked-reputation for skill authors, so the catalogue grows and self-maintains. Drift-CI + completion ratings + a proven-broken bounty keep quality honest.
-- **Mainnet (#5 of go-live):** fresh L1 deploy, real Normies binding, audited skill modules.
+- **Mainnet:** fresh L1 deploy, real Normies binding, real USDC, audited skill modules.
 
 ### Why this matters for agents
 

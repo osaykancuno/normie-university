@@ -110,12 +110,26 @@ export async function GET(req: NextRequest) {
       disclaimer: "credentials are technical attestations that an on-chain interaction occurred — NOT financial advice, custody, or a guarantee of outcomes/safety",
       roadmap: `${origin}/developers#trust`,
     },
+    // Current vs projected state — set expectations honestly for any consumer.
+    stage: {
+      network: ACTIVE_CHAIN.id === 1 ? "mainnet" : "testnet",
+      phase:
+        ACTIVE_CHAIN.id === 1
+          ? "mainnet"
+          : "sepolia-rehearsal", // full protocol live on Sepolia with TEST funds
+      mainnet: "projected", // fresh L1 deploy + real Normies binding + real USDC + audit
+      note:
+        "NORMIE UNIVERSITY is live on Sepolia as a complete rehearsal. Mainnet is the projected next step — real Normies as agent identities, real USDC payments. The reputation consumer side is being opened by the Normies community.",
+    },
     integrations: {
       normies: {
         api: "https://api.normies.art",
         contract: "0x9Eb6E2025B64f340691e424b7fe7022fFDE12438",
         chain: "ethereum",
         landing: `${origin}/community/normies`,
+        // The Normies community is the first reputation consumer — building the
+        // demand side (access / standing / governance gated on NU skills).
+        role: "reputation-consumer (community-led)",
       },
     },
     sdk: {
