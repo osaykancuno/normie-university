@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useLeaderboard } from "@/hooks/useReputation";
 import { Badge } from "@/components/ui/badge";
@@ -20,12 +20,28 @@ export default function ReputationLeaderboardPage() {
 
   const rows = addresses.map((addr, i) => ({ addr, score: scores[i] ?? 0n }));
 
+  // NFT-bound agents are sybil-resistant (1 Normie = 1 identity, and Normies
+  // cost money) — flag them so the score can be trusted.
+  const [bound, setBound] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/agents/bound")
+      .then((r) => r.json())
+      .then((j) => { if (!cancelled) setBound(new Set((j.addresses ?? []).map((a: string) => a.toLowerCase()))); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
       <div className="mb-8">
         <h1 className="text-3xl font-semibold tracking-tight text-ink">Reputation Leaderboard</h1>
         <p className="mt-1 text-sm text-ink-soft">
           Top agents by composable on-chain reputation score. Readable by any external protocol.
+          <span className="mt-1 block text-xs text-ink-muted">
+            🔗 <strong className="text-ink-soft">NFT-bound</strong> agents are tied to a scarce Normie
+            (1 NFT = 1 identity) — sybil-resistant, and their score weighs more.
+          </span>
         </p>
       </div>
 
@@ -75,8 +91,16 @@ export default function ReputationLeaderboardPage() {
                 <div className="flex items-center gap-4">
                   <RankBadge rank={i + 1} />
                   <div>
-                    <div className="font-mono text-sm text-ink">
+                    <div className="flex items-center gap-2 font-mono text-sm text-ink">
                       {shortAddress(row.addr, 6)}
+                      {bound.has(row.addr.toLowerCase()) && (
+                        <span
+                          title="Bound to a Normie NFT — sybil-resistant"
+                          className="border border-line px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-ink-soft"
+                        >
+                          🔗 NFT-bound
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -169,8 +169,38 @@ async function verifyOnChainCall(
     }
   }
 
-  const { level, score } = tierFromDifficulty(mod.difficulty);
+  // COMPETENCE, not just execution: a credential earned by a $0.0001 dust tx
+  // must NOT score the same as one backing a real position. We read the action
+  // size (ETH value, or the first uint argument of the call) and scale the
+  // difficulty score by it — dust is penalised, real size is rewarded. This
+  // flows into the credential `score` and thus into on-chain reputation.
+  const { level, score: baseScore } = tierFromDifficulty(mod.difficulty);
+  const score = competenceScore(tx.value ?? 0n, tx.input ?? "0x", baseScore);
   return { pass: true, level, score };
+}
+
+/// Best-effort action size in 18-decimal units (wei for ETH; first uint arg for
+/// token amounts). Most of our catalogue is ETH/18-decimal-denominated.
+function actionSize(value: bigint, input: string): bigint {
+  if (value > 0n) return value;
+  if (input.length >= 74) {
+    try { return BigInt("0x" + input.slice(10, 74)); } catch { /* not a uint arg */ }
+  }
+  return 0n;
+}
+
+/// Scale a base difficulty score by the size of the on-chain action.
+///   < 0.001 → ×0.5 (dust)   0.01 → ×0.7   0.1 → ×0.85   1 → ×1.0   ≥1 → ×1.05
+function competenceScore(value: bigint, input: string, baseScore: number): number {
+  const size = actionSize(value, input);
+  const E = (n: number) => 10n ** BigInt(n);
+  let factor: number;
+  if (size < E(15)) factor = 0.5;        // < 0.001
+  else if (size < E(16)) factor = 0.7;   // < 0.01
+  else if (size < E(17)) factor = 0.85;  // < 0.1
+  else if (size < E(18)) factor = 1.0;   // < 1
+  else factor = 1.05;                    // ≥ 1
+  return Math.max(30, Math.min(100, Math.round(baseScore * factor)));
 }
 
 // ---------------------------------------------------------------------------
