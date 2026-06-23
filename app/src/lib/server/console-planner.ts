@@ -117,6 +117,13 @@ export type ConsolePlan = {
   contract: { name: string; address: string; explorer: string | null };
   call: { functionName?: string; selector?: string };
   tx: ConsoleTx | null;    // the exact transaction to sign (when buildable)
+  mode: "transaction" | "automation"; // one-shot vs an ongoing monitored strategy
+  advantage: string;       // the concrete EDGE of the skill vs a raw tx (lever 1)
+  optimization: {          // best-option comparison for yield/swap decisions (lever 1)
+    label: string;
+    options: { name: string; detail: string; best?: boolean }[];
+  } | null;
+  automation: string | null; // what the strategy monitors + acts on (lever 2)
   preview: string;         // one-line plain-English summary
   steps: string[];         // ordered human steps
   outcome: string;         // what the user ends up with
@@ -175,6 +182,92 @@ function detectAmountAsset(raw: string): { amount?: string; asset?: string } {
     .sort((a, b) => b.length - a.length);
   const asset = present[0] ? present[0].toUpperCase() : undefined;
   return { amount, asset };
+}
+
+// ---------------------------------------------------------------------------
+// The three "edge" levers: why a skill beats a raw tx (advantage), the best
+// option among comparable skills (optimization), and whether it's a one-shot tx
+// or an ongoing monitored strategy (automation).
+// ---------------------------------------------------------------------------
+
+/// Indicative MAINNET APYs for the yield/staking skills — used only for the
+/// "best available rate" comparison shown in the plan. Clearly labelled
+/// indicative; not a guarantee. Keyed by a substring of the skill name.
+const INDICATIVE_APY: { match: RegExp; name: string; apy: number }[] = [
+  { match: /ethena|susde/i, name: "Ethena sUSDe", apy: 12 },
+  { match: /sky|susds/i, name: "Sky sUSDS", apy: 7.5 },
+  { match: /maker|sdai|dsr/i, name: "Maker sDAI", apy: 6 },
+  { match: /renzo|ezeth/i, name: "Renzo ezETH", apy: 4.2 },
+  { match: /kelp|rseth/i, name: "Kelp rsETH", apy: 4.0 },
+  { match: /ether\.?fi|eeth/i, name: "ether.fi eETH", apy: 3.6 },
+  { match: /frax|sfrxeth/i, name: "Frax sfrxETH", apy: 3.5 },
+  { match: /lido|steth/i, name: "Lido stETH", apy: 3.1 },
+  { match: /rocket|reth/i, name: "Rocket Pool rETH", apy: 3.0 },
+  { match: /compound/i, name: "Compound V3", apy: 4.5 },
+  { match: /aave/i, name: "Aave V3", apy: 4.0 },
+];
+
+function classifyMode(name: string): "transaction" | "automation" {
+  return /manager|rebalanc|auto[- ]?claim|health|harvest|delta[- ]?neutral|monitor|router/i.test(name)
+    ? "automation"
+    : "transaction";
+}
+
+function automationFor(name: string): string | null {
+  if (classifyMode(name) !== "automation") return null;
+  if (/health|aave/i.test(name)) return "Monitors your position's health factor and rebalances before it can be liquidated.";
+  if (/rebalanc|lp/i.test(name)) return "Watches your LP range and rebalances when price drifts out of it, keeping capital productive.";
+  if (/harvest|bribe/i.test(name)) return "Periodically claims and compounds rewards/bribes so they don't sit idle.";
+  if (/router|yield/i.test(name)) return "Continuously routes funds to the best available rate as markets move.";
+  if (/auto[- ]?claim|vesting/i.test(name)) return "Auto-claims each vesting unlock and reinvests it the moment it's available.";
+  return "Runs as an ongoing strategy — NORMIE UNIVERSITY monitors and acts on your behalf within the skill's certified bounds.";
+}
+
+function advantageFor(verb: string | null, name: string): string {
+  const n = name.toLowerCase();
+  if (classifyMode(name) === "automation") return "An ongoing strategy, not a one-shot tx — it keeps working for you after you set it up.";
+  if (verb === "swap" || /swap|router|1inch|aggregat/.test(n)) return "Best-price routing across venues with a slippage guard — better execution than a manual swap, with the revert simulated away before you sign.";
+  if (verb === "save" || /saving|sdai|susds|susde|dsr|stable/.test(n)) return "Auto-picks the best available savings rate and handles the ERC-4626 deposit in one safe step.";
+  if (verb === "restake" || /restak|ezeth|rseth|eigen/.test(n)) return "Restaking stacks extra AVS rewards on top of base staking yield — double yield in a single liquid position.";
+  if (verb === "stake" || /stak|steth|reth|eeth/.test(n)) return "You receive a liquid staking token you can keep using as collateral while it earns.";
+  if (verb === "wrap" || /wrap|wsteth/.test(n)) return "Turns your token into its DeFi-composable form in one click, ready to use anywhere.";
+  if (verb === "bridge" || /bridge|across/.test(n)) return "Moves funds across chains via the fastest, cheapest route — no manual bridge hunting.";
+  if (verb === "supply" || /supply|lend|aave|compound/.test(n)) return "Earns yield AND unlocks borrowing power, with the position tracked for you.";
+  return "A safe, simulated, one-click version of a multi-step on-chain operation a non-expert would otherwise get wrong.";
+}
+
+/// For yield/staking intents, compare the relevant active skills by indicative
+/// APY and mark the best — so the skill demonstrably optimises, vs a raw tx.
+function optimizationFor(
+  verb: string | null,
+  matchedName: string,
+  entries: Entry[]
+): ConsolePlan["optimization"] {
+  const isYield = verb === "save" || verb === "stake" || verb === "restake" ||
+    /saving|stak|yield|susde|susds|sdai|reth|steth|eeth|ezeth|rseth/i.test(matchedName);
+  if (!isYield) return null;
+
+  // family: ETH-staking vs dollar-yield — compare like with like. Classify by
+  // the TOKEN, not the word "staking" ("Ethena sUSDe Staking" is a stablecoin).
+  const STABLE = /susde|susds|sdai|usde|usds|usdc|\bdai\b/i;
+  const ETHLST = /steth|reth|eeth|ezeth|rseth|frxeth|wsteth|restak|eigen|lido|rocket/i;
+  const fam = (n: string): "eth" | "dollar" => (ETHLST.test(n) && !STABLE.test(n) ? "eth" : "dollar");
+  const target = fam(matchedName);
+  const rows: { name: string; detail: string; best?: boolean; apy: number }[] = [];
+  for (const e of entries) {
+    const row = INDICATIVE_APY.find((r) => r.match.test(e.skill.name));
+    if (!row) continue;
+    if (fam(e.skill.name) !== target) continue;
+    if (!rows.some((x) => x.name === row.name)) rows.push({ name: row.name, detail: `~${row.apy}% APY`, apy: row.apy });
+  }
+  const ethFamily = target === "eth";
+  if (rows.length < 2) return null;
+  rows.sort((a, b) => b.apy - a.apy);
+  rows[0].best = true;
+  return {
+    label: ethFamily ? "Best ETH-staking yield (indicative)" : "Best stablecoin yield (indicative)",
+    options: rows.slice(0, 4).map(({ name, detail, best }) => ({ name, detail, best })),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -362,6 +455,10 @@ export async function planInstruction(instruction: string, agent?: string): Prom
     contract: { name: contract?.name ?? "target contract", address: contract?.address ?? "", explorer },
     call: sel,
     tx,
+    mode: classifyMode(e.skill.name),
+    advantage: advantageFor(verb, e.skill.name),
+    optimization: optimizationFor(verb, e.skill.name, entries),
+    automation: automationFor(e.skill.name),
     preview: `${cap(verbLabel)} ${amountStr} via ${e.skill.name} on ${chainName}.`,
     steps: buildSteps(verbLabel, amountStr, e.skill.name, contract?.name, sel.functionName),
     outcome: mod?.verification?.criteria

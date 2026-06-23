@@ -9,6 +9,7 @@ import { IS_COMING_SOON } from "@/config/launch";
 import { getAddresses } from "@/lib/contracts";
 
 type Tx = { to: string; value: string; data: string; functionName: string; needsApproval?: string };
+type Opt = { label: string; options: { name: string; detail: string; best?: boolean }[] };
 type Plan = {
   skillId: string; skillName: string; difficulty: number; chainId: number; chainName: string;
   owned: boolean | null;
@@ -16,6 +17,10 @@ type Plan = {
   contract: { name: string; address: string; explorer: string | null };
   call: { functionName?: string; selector?: string };
   tx: Tx | null;
+  mode: "transaction" | "automation";
+  advantage: string;
+  optimization: Opt | null;
+  automation: string | null;
   preview: string; steps: string[]; outcome: string; safety: string[]; confidence: number;
 };
 type PlanResult =
@@ -146,7 +151,9 @@ function ExecutePanel({ plan, normieId }: { plan: Plan; normieId?: string }) {
         {signing && "Confirm in your wallet…"}
         {confirming && "Waiting for confirmation…"}
         {completing && "Verifying on-chain & minting credential…"}
-        {!busy && `Sign to ${plan.action.verb} on ${plan.chainName}.`}
+        {!busy && (plan.mode === "automation"
+          ? `Set up this strategy on ${plan.chainName} — the initial position is signed by you.`
+          : `Sign to ${plan.action.verb} on ${plan.chainName}.`)}
         {err && <span className="mt-1 block text-ink">{err}</span>}
       </div>
       <button
@@ -181,7 +188,7 @@ function ExecutePanel({ plan, normieId }: { plan: Plan; normieId?: string }) {
         }}
         className="border border-line-strong bg-ink px-5 py-2 text-sm font-semibold text-paper hover:opacity-90 disabled:opacity-40 mono"
       >
-        {simulating ? "Simulating…" : busy ? "Working…" : "Sign & execute →"}
+        {simulating ? "Simulating…" : busy ? "Working…" : plan.mode === "automation" ? "Set up strategy →" : "Sign & execute →"}
       </button>
     </div>
   );
@@ -373,7 +380,40 @@ function PlanView({ result, onPick, normieId }: { result: Extract<PlanResult, { 
           {p.owned === false && (
             <span className="border border-line bg-paper px-2.5 py-1 text-ink-soft">new credential on completion</span>
           )}
+          {p.mode === "automation" && (
+            <span className="border border-line-strong bg-paper px-2.5 py-1 text-ink">⚙ automation</span>
+          )}
         </div>
+
+        {/* the edge — why a skill beats a raw tx (lever 1) */}
+        <div className="mt-4 border-l-2 border-line-strong bg-paper p-3">
+          <div className="mono text-[10px] uppercase tracking-wider text-ink-muted">⚡ The edge</div>
+          <p className="mt-1 text-sm text-ink">{p.advantage}</p>
+        </div>
+
+        {/* optimization — best option among comparable skills (lever 1) */}
+        {p.optimization && (
+          <div className="mt-3 border border-line bg-paper p-3">
+            <div className="mono text-[10px] uppercase tracking-wider text-ink-muted">{p.optimization.label}</div>
+            <ul className="mt-2 space-y-1">
+              {p.optimization.options.map((o) => (
+                <li key={o.name} className={`flex items-center justify-between text-sm ${o.best ? "text-ink" : "text-ink-soft"}`}>
+                  <span>{o.best ? "★ " : "· "}{o.name}{o.best ? " — best" : ""}</span>
+                  <span className="mono text-xs">{o.detail}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-[10px] mono text-ink-muted">Indicative rates — the skill routes you to the best available, not a fixed venue.</p>
+          </div>
+        )}
+
+        {/* automation — ongoing strategy framing (lever 2) */}
+        {p.automation && (
+          <div className="mt-3 border border-line bg-canvas p-3">
+            <div className="mono text-[10px] uppercase tracking-wider text-ink-muted">⚙ Ongoing strategy</div>
+            <p className="mt-1 text-sm text-ink-soft">{p.automation}</p>
+          </div>
+        )}
 
         {/* steps */}
         <div className="mt-5">
