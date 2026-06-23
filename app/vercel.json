@@ -3,6 +3,9 @@
   "buildCommand": "next build",
   "installCommand": "npm install",
   "regions": ["iad1"],
+  "crons": [
+    { "path": "/api/console/warm", "schedule": "*/5 * * * *" }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",
