@@ -368,9 +368,10 @@ export async function planInstruction(instruction: string, agent?: string): Prom
       ? `On success the oracle verifies the on-chain action and mints credential #${e.skill.skillId} to your agent, updating its on-chain reputation.`
       : `Mints credential #${e.skill.skillId} to your agent on success.`,
     safety: [
-      `This can only call ${contract?.name ?? "the contract"} (${short(contract?.address)}) — the exact address skill #${e.skill.skillId} certifies. No other contract can be targeted.`,
+      `This can only call ${contract?.name ?? "the contract"} (${short(contract?.address)}) — the exact address skill #${e.skill.skillId} declares. No other contract can be targeted.`,
       `You sign the transaction yourself. NORMIE UNIVERSITY never holds your keys or funds.`,
       `Runs on ${chainName}; the action is verified on-chain before any credential is issued.`,
+      `This is a technical attestation, not financial advice — NORMIE UNIVERSITY does not guarantee outcomes, yields, or safety of third-party protocols.`,
     ],
     confidence: Math.min(1, top.s / 10),
   };

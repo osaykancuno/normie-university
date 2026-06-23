@@ -42,6 +42,7 @@ function ExecutePanel({ plan, normieId }: { plan: Plan; normieId?: string }) {
   const [hash, setHash] = useState<`0x${string}` | undefined>();
   const { data: receipt, isLoading: confirming } = useWaitForTransactionReceipt({ hash });
   const [completing, setCompleting] = useState(false);
+  const [simulating, setSimulating] = useState(false);
   const [done, setDone] = useState<{ ok: boolean; msg: string } | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -149,9 +150,24 @@ function ExecutePanel({ plan, normieId }: { plan: Plan; normieId?: string }) {
         {err && <span className="mt-1 block text-ink">{err}</span>}
       </div>
       <button
-        disabled={busy}
+        disabled={busy || simulating}
         onClick={async () => {
           setErr(null);
+          // SAFETY: dry-run the tx first. If it would revert, stop before the
+          // user signs and loses gas.
+          setSimulating(true);
+          try {
+            const sim = await fetch("/api/console/simulate", {
+              method: "POST", headers: { "content-type": "application/json" },
+              body: JSON.stringify({ chainId: plan.chainId, from: address, to: plan.tx!.to, data: plan.tx!.data, value: plan.tx!.value }),
+            }).then((r) => r.json()).catch(() => null);
+            if (sim && sim.ok === false) {
+              setErr(`Simulation failed — not signing: ${sim.reason}`);
+              setSimulating(false);
+              return;
+            }
+          } catch { /* simulation best-effort */ }
+          setSimulating(false);
           try {
             const h = await sendTransactionAsync({
               to: plan.tx!.to as `0x${string}`,
@@ -165,7 +181,7 @@ function ExecutePanel({ plan, normieId }: { plan: Plan; normieId?: string }) {
         }}
         className="border border-line-strong bg-ink px-5 py-2 text-sm font-semibold text-paper hover:opacity-90 disabled:opacity-40 mono"
       >
-        {busy ? "Working…" : "Sign & execute →"}
+        {simulating ? "Simulating…" : busy ? "Working…" : "Sign & execute →"}
       </button>
     </div>
   );
@@ -309,9 +325,16 @@ export default function ConsolePage() {
       )}
 
       <p className="mt-8 text-xs mono text-ink-muted">
-        The console never holds your keys or funds. Every plan resolves to a
-        skill in the on-chain catalogue and can only touch that skill&apos;s
-        certified contract. You sign every transaction yourself.
+        The console never holds your keys or funds. Every plan resolves to a skill
+        in the on-chain catalogue and can only touch that skill&apos;s declared
+        contract; each transaction is dry-run before you sign it. You sign every
+        transaction yourself.{" "}
+        <span className="block mt-1">
+          Skills are technical attestations, <strong className="text-ink-soft">not financial advice</strong>.
+          NORMIE UNIVERSITY verifies that an on-chain interaction occurred — it does
+          not recommend it, custody funds, or guarantee outcomes. You are responsible
+          for your transactions.
+        </span>
       </p>
     </div>
   );
