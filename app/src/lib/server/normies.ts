@@ -29,6 +29,7 @@ const TTL = {
   traits:    24 * 3600_000, // 24h — immutable per token
   metadata:  60 * 60_000,   // 1h — Canvas state can change but slowly
   canvas:    60_000,        // 1 min — fast-moving
+  rarity:    5 * 60_000,    // 5 min — rank/floor/listing move with the market
 };
 
 /// cachedFetch with STALE-ON-ERROR semantics.
@@ -163,6 +164,54 @@ export async function getNormieCanvasInfo(tokenId: string | number): Promise<Nor
 /// Direct URL to a Normie SVG — safe to embed as <img src>.
 export function normieImageUrl(tokenId: string | number, format: "svg" | "png" = "svg"): string {
   return `${NORMIES_API}/normie/${tokenId}/image.${format}`;
+}
+
+// ---------------------------------------------------------------------------
+// Rarity — live rank, score, fair value, floor, listing & "underpriced" flag,
+// plus awakened-agent metadata. Enriches a Normie's NU profile with how rare /
+// valuable it is, straight from the official rarity index.
+// ---------------------------------------------------------------------------
+
+export type NormieRarity = {
+  id?: number;
+  name?: string;
+  rank?: number;
+  rarityScore?: number;
+  fairValue?: number | string;
+  typeFloor?: number | string;
+  awake?: boolean;
+  agentName?: string;
+  agentOrder?: number;
+  agentTotal?: number;
+  openseaUrl?: string;
+  [k: string]: unknown; // the index returns a rich object; keep extras
+};
+
+export type RarityStats = {
+  supply?: number;
+  burned?: number;
+  listed?: number;
+  floorPrice?: number | string;
+  awake?: number; // awakened-agent count
+  [k: string]: unknown;
+};
+
+/// GET /rarity/normie/:id — full live rarity detail for one token.
+export async function getNormieRarity(tokenId: string | number): Promise<NormieRarity | null> {
+  try {
+    return await getJson<NormieRarity>(`/rarity/normie/${tokenId}`, TTL.rarity);
+  } catch {
+    return null;
+  }
+}
+
+/// GET /rarity/stats — collection-wide rarity stats (floor, supply, awakened…).
+export async function getRarityStats(): Promise<RarityStats | null> {
+  try {
+    return await getJson<RarityStats>(`/rarity/stats`, TTL.rarity);
+  } catch {
+    return null;
+  }
 }
 
 // ===========================================================================

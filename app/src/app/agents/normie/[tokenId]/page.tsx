@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useMemo } from "react";
+import { use, useMemo, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePersona, usePersonaPreview, useCanvasFeed, useBurnHistory, useNormie } from "@/hooks/useNormies";
 import { useAgentSkills } from "@/hooks/useCredentials";
@@ -60,6 +60,22 @@ export default function NormieAgentProfilePage({
   // live without a write). This is the protocol's single source of truth;
   // the Normies-flavoured composite below is a separate activity display.
   const { data: repData } = usePreviewReputation(ownerAddr);
+
+  // Official rarity index — rank, score, fair value, type floor. Enriches the
+  // profile with how rare/valuable this Normie is (from api.normies.art).
+  const [rarity, setRarity] = useState<{
+    rank?: number; rarityScore?: number; fairValue?: number | string;
+    typeFloor?: number | string; openseaUrl?: string;
+  } | null>(null);
+  useEffect(() => {
+    if (!validId) return;
+    let off = false;
+    fetch(`/api/normies/rarity/${id}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (!off && j?.rarity) setRarity(j.rarity); })
+      .catch(() => {});
+    return () => { off = true; };
+  }, [id, validId]);
 
   const credentials = useMemo(() => {
     const ids = (skillIds as bigint[] | undefined) ?? [];
@@ -254,6 +270,29 @@ export default function NormieAgentProfilePage({
               </div>
             );
           })()}
+
+          {/* Rarity — from the official Normies rarity index */}
+          {rarity && (rarity.rank || rarity.rarityScore) && (
+            <div className="border border-line bg-surface p-6">
+              <div className="flex items-center justify-between">
+                <div className="mono text-[10px] uppercase tracking-wider text-ink-muted">
+                  Rarity · api.normies.art
+                </div>
+                {rarity.openseaUrl && (
+                  <a href={String(rarity.openseaUrl)} target="_blank" rel="noopener noreferrer"
+                    className="mono text-[11px] text-ink underline decoration-line-strong underline-offset-2 hover:opacity-70">
+                    OpenSea →
+                  </a>
+                )}
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
+                {rarity.rank != null && <Stat label="Rank" value={`#${rarity.rank}`} />}
+                {rarity.rarityScore != null && <Stat label="Score" value={Number(rarity.rarityScore).toFixed(0)} />}
+                {rarity.fairValue != null && <Stat label="Fair value" value={`${rarity.fairValue} Ξ`} />}
+                {rarity.typeFloor != null && <Stat label="Type floor" value={`${rarity.typeFloor} Ξ`} />}
+              </div>
+            </div>
+          )}
 
           {/* Normies activity index — community-flavoured, NOT the protocol score */}
           <div className="border border-line bg-surface p-6">
