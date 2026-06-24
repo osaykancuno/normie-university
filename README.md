@@ -2,7 +2,18 @@
 
 > Built for the [Normies hackathon](https://hackathon.normies.art). 100% Normies-native, ERC-8004 + Adapter8004 aware, deployed on Ethereum L1.
 
-**One-line pitch**: every awakened Normie can buy verifiable skill modules in USDC (gasless x402), earn Soulbound credentials, and build composable on-chain reputation. NORMIE UNIVERSITY turns a static 40×40 pixel identity into an operationally-useful agent.
+**One-line pitch**: every awakened Normie buys verifiable skill modules in USDC (gasless x402), earns Soulbound credentials that **follow the NFT when it's sold**, and acts on-chain through **plain English** — turning a static 40×40 pixel identity into a trained, transferable agent. NORMIE UNIVERSITY is the **Skills Layer**: the missing layer between "an agent exists" and "an agent has proven, portable capability."
+
+### ⭐ Highlights for judges
+
+- 🧬 **Skills follow the NFT** — credentials + reputation bind to the Normie's ERC-8004 identity (`controllerOf == ownerOf`). **Sell the Normie → its entire education transfers atomically to the buyer.** Proven on-chain end-to-end.
+- 🗣️ **Agent Console** — type *"stake 1 ETH on Lido"* → the app maps it to a certified skill, builds the **exact tx**, **simulates it (`eth_call`) before you sign**, shows the best-rate **edge**, and you sign non-custodially. → [/console](https://normie-university.vercel.app/console)
+- 🛡️ **Reputation that's hard to fake AND meaningful** — score scales with the **size** of the on-chain action (dust ≈ 45, real ≥ 90); reputation **favors NFT-bound agents** (1 Normie = 1 scarce identity). Readable by any protocol via `SkillGate`.
+- 🤝 **Built ON the official Normies ERC-8004 registry** — binding / agent-card / metadata / directory are sourced from the canonical Normies endpoints, not a parallel registry.
+- ✅ **212 Foundry tests** · spec-driven fail-closed oracle · 2-of-2 anchor checkpoints · multi-chain skills (L1 + Base + Optimism).
+
+### 🎬 60-second demo path
+`/console` → type "earn yield on 1000 USDC" (see the best-rate edge) · `/identity` → mint a test Normie, bind it, earn a skill, then **transfer it and watch the skill follow** · `/skills` → 33 live, auto-verifiable skills · `/.well-known/agent.json` → the machine-readable trust + stage model.
 
 > ## ⚠️ Demo / Testnet disclosure
 >
@@ -14,10 +25,12 @@
 
 - 🌐 **Live demo**: **https://normie-university.vercel.app** (Ethereum Sepolia)
 - 📦 **Repo**: https://github.com/osaykancuno/normie-university
-- 🔍 **Awakened agents directory**: searchable, filterable index → [/agents](https://normie-university.vercel.app/agents)
-- 🎓 **Skill catalogue**: 32 live skills, IPFS-pinned → [/skills](https://normie-university.vercel.app/skills)
-- 💡 **Use cases**: 10 buyer personas with ROI projections → [/use-cases](https://normie-university.vercel.app/use-cases)
-- 🤖 **A2A manifest**: [/.well-known/agent.json](https://normie-university.vercel.app/.well-known/agent.json)
+- 🗣️ **Agent Console** (NL → safe on-chain action): [/console](https://normie-university.vercel.app/console)
+- 🧬 **Skills-follow-the-NFT demo**: [/identity](https://normie-university.vercel.app/identity)
+- 🎓 **Skill catalogue**: 33 live, auto-verifiable skills, IPFS-pinned → [/skills](https://normie-university.vercel.app/skills)
+- 🔍 **Awakened agents directory**: searchable index → [/agents](https://normie-university.vercel.app/agents)
+- 🤖 **A2A manifest** (trust + stage model): [/.well-known/agent.json](https://normie-university.vercel.app/.well-known/agent.json)
+- 💚 **Ops pulse**: [/api/health](https://normie-university.vercel.app/api/health)
 
 ---
 
@@ -35,8 +48,11 @@
 | **Pixel avatar everywhere** | `/normie/{id}/image.svg` | Agent profile, dashboard, leaderboard — every face is the canonical Normie pixel art. |
 | **Persona-tailored curriculum** | `/agents/info/{id}` → traits → recommendation engine | "Pixel-born philosopher (Human/Peaceful/Nerd-Glasses) → ZK Proof Verification" — recommendations actually derived from the persona. |
 | **Welcome-gift gating** | `/holders/{address}` ownership check | Sponsored first skill, free, gated to Normie holders only. |
+| **Official rarity on the profile** | `/rarity/normie/{id}`, `/rarity/stats` | Each agent shows its canonical rank · rarity score · fair value · type floor, straight from the official rarity index — plus a deep link to OpenSea. |
+| **Community burn leaderboard** | `/rarity/recursive-burn-holders` | `/community/normies` ranks wallets by recursive burns into their customized Normies — a real on-chain commitment signal (126 wallets indexed). |
+| **Official ERC-8004 records** | `/agents/agent-card/{id}`, `/agents/metadata/{id}` | The profile links the canonical Normies agent-card + ERC-8004 metadata, so NU reads from the official registry instead of a parallel one. |
 
-**15 Normies API endpoints consumed**, **6 of them feed user-facing features**.
+**20+ Normies API endpoints consumed**, **9 of them feed user-facing features** — including the official ERC-8004 registry and rarity index.
 
 ---
 
@@ -44,7 +60,7 @@
 
 1. **Awaken your Normie** — at [normies.art/lab](https://normies.art/lab), bind via Adapter8004. Your NFT is now an ERC-8004 agent.
 2. **Sign in** to NORMIE UNIVERSITY — RainbowKit connects, the dashboard greets you by persona name fetched live from `/agents/info/{id}`.
-3. **Browse the catalogue** — 32 live skill modules (40 on-chain · 8 deactivated meta-internals · 4 audit-fixed). 18 of 32 are auto-verified on-chain; the rest declare manual review with a 48h SLA. Persona-tailored recommendations.
+3. **Browse the catalogue** — 33 active skill modules on-chain; most are auto-verified by the oracle, the rest declare manual review with a 48h SLA. Persona-tailored recommendations.
 4. **Buy a skill** — gasless via x402 + EIP-3009 USDC. Server relays gas; you sign once.
 5. **Complete** — submit a proof tx hash. The chain-aware, spec-driven oracle verifies the execution **on the chain the skill declares** against the **addresses + selectors the IPFS module declares**, then signs a completion authorization carrying a deadline + single-use nonce (anti-stale, anti-replay).
 6. **Mint** — the relayer submits `SkillMarketplace.completeSkillFor` (gasless for the agent). This is the **single canonical path**: it mints the Soulbound credential, distributes escrowed revenue (70/20/10), and recomputes on-chain reputation — atomically. A credential always implies a completed, paid purchase.
@@ -55,24 +71,28 @@
 ## Architecture
 
 ```
-contracts/        Solidity 0.8.24 · Foundry · 205 tests passing
-  ├── core/            AgentRegistry, SkillRegistry (CREATOR_ROLE gated), SkillCredential (Soulbound, mint only via marketplace)
-  ├── marketplace/     SkillMarketplace (x402, completeSkillFor w/ deadline+nonce), PathRegistry, CrossChainReceiver
+contracts/        Solidity 0.8.24 · Foundry · 212 tests passing
+  ├── core/            AgentRegistry, SkillRegistry (CREATOR_ROLE), SkillCredential (Soulbound, mint only via marketplace)
+  ├── marketplace/     SkillMarketplace (x402, completeSkillFor w/ deadline+nonce, sponsorFirstSkill), PathRegistry, CrossChainReceiver
   ├── reputation/      ReputationEngine (5-factor), ValidationRegistry (ERC-8004, live)
   ├── anchor/          PixelOracleAnchor (per-epoch 2-of-2 Merkle checkpoint), SkillGate (composable on-chain gating)
+  ├── identity/        NormieAgentBinding (ERC-8217-style: skills follow the NFT; controllerOf == ownerOf)
+  ├── mocks/           MockNormies (testnet stand-in for the mainnet Normies collection)
   ├── treasury/        Treasury (Aave V3 yield optional)
   └── libraries/       SkillTypes (shared structs, errors)
 
 app/              Next.js 16 · App Router · agent-focused
-  ├── app/             Landing, /skills, /agents, /use-cases, /dashboard, /community/normies, /developers, /reputation
-  ├── app/api/         x402, agent-card, verify (auto+manual), validation/attest, anchor/{checkpoint,proof}, 15 Normies proxies
-  ├── components/      AwakenedTicker (live 30s poll), AgentDirectoryCard, SkillContentPreview, PurchasePanel
-  └── lib/server/      normies.ts, verifier.ts (chain-aware spec-driven oracle), validator.ts, anchor-checkpoint.ts, anchor/*
+  ├── app/             Landing, /console, /identity, /skills, /agents, /paths, /reputation, /community/normies, /developers, /dashboard
+  ├── app/api/         console/{plan,simulate,warm}, agent-identity, identity/sponsor, agents/bound, skills/*/{buy,complete},
+  │                    verify (auto+manual), validation/attest, anchor/{checkpoint,proof}, health, normies/* proxies (rarity, burn-leaderboard…)
+  ├── components/      Agent Console UI, LiveBindingDemo, BurnLeaderboard, AgentDirectoryCard, PurchasePanel
+  └── lib/server/      console-planner.ts, verifier.ts (chain-aware spec-driven oracle + competence scoring), binding.ts,
+                       validator.ts, anchor-checkpoint.ts, normies.ts, skill-module-loader.ts
 
+skill-modules/    54 JSON specs (33 active) · ABI fragments, viem reference implementations, verification rules
+scripts/          revamp-catalogue.mjs, seed-paths.mjs, add-sepolia-test-skill.mjs, check-skill-oracle-drift.mjs, test-identity-loop.mjs
 sdk/              @skillai/sdk · agent-friendly TypeScript SDK
-skill-modules/    16 JSON specs · ABI fragments, viem reference implementations, verification rules
-scripts/          seed-skills.ts, smoke-test.ts
-docs/             api.md, security.md, deploy.md, skill-module-spec.md
+.github/workflows/ ci.yml — Foundry tests + frontend build + skill↔oracle drift guard
 ```
 
 ## Cost model on L1
@@ -90,14 +110,14 @@ Pricing tiers:
 ## Quick start (local)
 
 ```bash
-git clone <repo>
-cd SkillAI/app
-cp .env.example .env.local       # WalletConnect projectId provided, set RPC_URL
+git clone https://github.com/osaykancuno/normie-university
+cd normie-university/app
+cp .env.example .env.local       # set RPC_URL + (optional) your own WalletConnect projectId
 npm install
 npm run dev                       # http://localhost:3000
 ```
 
-In demo mode (no contracts deployed yet) you'll see 15 mock skills + 5 paths + a demo leaderboard. Connect a wallet that owns a Normie on Ethereum mainnet and you'll get persona-aware UI.
+The live deployment reads the on-chain catalogue (33 active skills, 5 paths) on Sepolia. Connect a wallet (desktop MetaMask works without WalletConnect) on Sepolia to use the Agent Console and the skills-follow-the-NFT demo.
 
 ## Deploy to Ethereum Sepolia
 
@@ -118,9 +138,33 @@ Full runbook: [`docs/deploy.md`](./docs/deploy.md).
 
 - **Standards**: ERC-721, ERC-2981 (royalty), ERC-2612 (permit), EIP-3009 (transferWithAuthorization / x402), ERC-8004 (trustless agents), ERC-8217 (agent NFT binding), EIP-712, EIP-191, A2A
 - **Frontend**: Next.js 16 + wagmi 3 + viem 2 + RainbowKit 2 + Tailwind v4
-- **Contracts**: Solidity 0.8.24 + Foundry · viaIR · 189 unit + 5 invariant tests · OpenZeppelin v5
-- **Chain**: Ethereum L1 (Sepolia testnet, Mainnet production)
-- **APIs consumed**: 15 endpoints from api.normies.art (holders, traits, image, agents/info, agents/binding, agents/agent-card, agents/persona-preview, agents/count, agents/list, canvas/info, canvas/diff, history/burns/receiver, history/normie/versions, history/stats, normie/owner)
+- **Contracts**: Solidity 0.8.24 + Foundry · viaIR · **212 tests passing** (unit + invariant) · OpenZeppelin v5
+- **Chain**: Ethereum L1 (Sepolia testnet rehearsal, Mainnet projected)
+- **Differentiators**: Agent Console (plain-English → certified, simulated execution plan) · skills-follow-the-NFT identity binding · competence-weighted reputation (action magnitude, dust penalty) · NFT-bound anti-sybil weighting · pre-sign `eth_call` tx simulation · official-Normies-ERC-8004 alignment
+- **APIs consumed**: api.normies.art — holders, traits, image, agents/{info,binding,agent-card,metadata,identity,persona-preview,count,list}, rarity/{normie,stats,recursive-burn-holders}, canvas/*, history/* (the official ERC-8004 registry + rarity index)
+- **APIs exposed**: `/api/console/{plan,simulate}`, `/api/agent-identity`, `/api/agents/bound`, `/api/identity/sponsor`, `/api/skills/*/{buy,complete}`, `/api/verify`, `/api/validation/attest`, `/api/anchor/{checkpoint,proof}`, `/api/health`, `/api/normies/*`
+
+---
+
+## Deployed contracts (Ethereum Sepolia)
+
+Live testnet rehearsal — every contract below is deployed, seeded, and exercised end-to-end (purchase → oracle → credential → reputation → anchor → skills-follow-the-NFT). Mainnet is projected and will use a separate, secured admin multisig + an audited skill-module pass.
+
+| Contract | Address |
+|---|---|
+| SkillMarketplace (x402, deadline+nonce) | [`0xA72E770D400d5397192fE8AA20E0eA5833ADe572`](https://sepolia.etherscan.io/address/0xA72E770D400d5397192fE8AA20E0eA5833ADe572) |
+| SkillCredential (Soulbound ERC-721) | [`0x47473aBC1ccEdf08e1915467dD7e008Ef6512ed4`](https://sepolia.etherscan.io/address/0x47473aBC1ccEdf08e1915467dD7e008Ef6512ed4) |
+| SkillRegistry | [`0x4d3572C0D529c4F3162aAB928D4336461823B9e7`](https://sepolia.etherscan.io/address/0x4d3572C0D529c4F3162aAB928D4336461823B9e7) |
+| AgentRegistry | [`0x0c14356eEB022515f45a8370145703990023ce40`](https://sepolia.etherscan.io/address/0x0c14356eEB022515f45a8370145703990023ce40) |
+| ReputationEngine (5-factor) | [`0x8714a363579Aa1135888bc6B689077705C86b46A`](https://sepolia.etherscan.io/address/0x8714a363579Aa1135888bc6B689077705C86b46A) |
+| ValidationRegistry (ERC-8004) | [`0xb0490cd67976096D77AD063fAA2a281488b8793B`](https://sepolia.etherscan.io/address/0xb0490cd67976096D77AD063fAA2a281488b8793B) |
+| PixelOracleAnchor (2-of-2 Merkle) | [`0x6dFba1A2072E356DeDa9457B1007bAD58315dE14`](https://sepolia.etherscan.io/address/0x6dFba1A2072E356DeDa9457B1007bAD58315dE14) |
+| PathRegistry | [`0x16555d59EaE75Ebba1B07dD46520C42Be6a59472`](https://sepolia.etherscan.io/address/0x16555d59EaE75Ebba1B07dD46520C42Be6a59472) |
+| NormieAgentBinding (skills-follow-the-NFT) | [`0xf7b279ed24c1a1be50e3c7992f8bd899853c98ee`](https://sepolia.etherscan.io/address/0xf7b279ed24c1a1be50e3c7992f8bd899853c98ee) |
+| MockNormies (testnet stand-in) | [`0xdb92e692b17b09be985edefd3ce81bf82b5ad6c2`](https://sepolia.etherscan.io/address/0xdb92e692b17b09be985edefd3ce81bf82b5ad6c2) |
+| USDC (test) | [`0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238`](https://sepolia.etherscan.io/address/0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238) |
+
+> On mainnet, agent identity defers to the **official Normies ERC-8004 registry** (`api.normies.art`) rather than this stand-in binding — see `integrations.normies.officialAgentRegistry` in the agent manifest.
 
 ---
 
