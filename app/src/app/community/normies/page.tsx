@@ -9,6 +9,7 @@ import { useNormiesOf } from "@/hooks/useNormies";
 import { NormieAvatar } from "@/components/normies/NormieAvatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import BurnLeaderboard from "@/components/normies/BurnLeaderboard";
 import { Button } from "@/components/ui/button";
 
 const NORMIES_CONTRACT = "0x9Eb6E2025B64f340691e424b7fe7022fFDE12438";
@@ -121,6 +122,11 @@ export default function NormiesCommunityPage() {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* Community burn leaderboard — official rarity index */}
+      <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
+        <BurnLeaderboard limit={10} />
       </section>
 
       {/* API endpoints we expose */}

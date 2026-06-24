@@ -214,6 +214,27 @@ export async function getRarityStats(): Promise<RarityStats | null> {
   }
 }
 
+export type BurnLeaderRow = {
+  wallet: `0x${string}`;
+  customizedTokensHeld: number;
+  totalRecursiveBurnCount: number;
+  totalDirectBurnCount: number;
+  tokenIds: number[];
+};
+export type BurnLeaderboard = { updatedAt?: string; totalWallets?: number; items: BurnLeaderRow[] };
+
+/// GET /rarity/recursive-burn-holders — community leaderboard of the wallets
+/// that have burned the most into their customized Normies. A real, on-chain
+/// signal of community commitment — surfaced in NU's community page.
+export async function getBurnLeaderboard(limit = 20): Promise<BurnLeaderboard | null> {
+  const capped = Math.min(100, Math.max(1, limit));
+  try {
+    return await getJson<BurnLeaderboard>(`/rarity/recursive-burn-holders?limit=${capped}`, TTL.rarity);
+  } catch {
+    return null;
+  }
+}
+
 // ===========================================================================
 // AGENT-LAYER ENDPOINTS — Normies "Awakening" (Nov 2025+)
 //

@@ -221,6 +221,8 @@ export default function NormieAgentProfilePage({
                 </div>
               )}
               <div className="rule" />
+              {/* Official Normies ERC-8004 agent records — NU builds on these. */}
+              <div className="mono text-[9px] uppercase tracking-wider text-ink-faint">Official ERC-8004 records</div>
               <a
                 href={`https://api.normies.art/agents/agent-card/${id}`}
                 target="_blank"
@@ -228,6 +230,14 @@ export default function NormieAgentProfilePage({
                 className="mono block text-[10px] text-ink-muted hover:text-ink"
               >
                 ↗ a2a agent card (json)
+              </a>
+              <a
+                href={`https://api.normies.art/agents/metadata/${id}`}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="mono block text-[10px] text-ink-muted hover:text-ink"
+              >
+                ↗ erc-8004 metadata (json)
               </a>
             </CardContent>
           </Card>

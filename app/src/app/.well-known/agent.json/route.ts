@@ -130,6 +130,20 @@ export async function GET(req: NextRequest) {
         // The Normies community is the first reputation consumer — building the
         // demand side (access / standing / governance gated on NU skills).
         role: "reputation-consumer (community-led)",
+        // NORMIE UNIVERSITY recognises and builds ON the OFFICIAL Normies
+        // ERC-8004 agent registry — not a parallel one. Agent identity, the A2A
+        // agent card, and ERC-8004 metadata are sourced from the canonical
+        // Normies endpoints, so a Normie's NU education attaches to its official,
+        // community-recognised agent identity.
+        officialAgentRegistry: {
+          standard: "ERC-8004",
+          binding: "https://api.normies.art/agents/binding/{tokenId}",
+          agentCard: "https://api.normies.art/agents/agent-card/{tokenId}",
+          metadata: "https://api.normies.art/agents/metadata/{tokenId}",
+          identity: "https://api.normies.art/agents/identity/{tokenId}",
+          directory: "https://api.normies.art/agents/list",
+          note: "NU uses the canonical Normies ERC-8004 binding as the source of truth for agent identity; on mainnet NU defers to it rather than maintaining a separate registry.",
+        },
       },
     },
     sdk: {
