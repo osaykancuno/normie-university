@@ -6,11 +6,11 @@
 /// machinery that already exists in this app.
 ///
 /// Strategy notes:
-///   - Registry + pricing recipient live on BASE (chainId 8453). The Normies
-///     collection lives on Ethereum L1, so on Base "Normie-gated" is enforced
-///     by a NU-controlled Base marker (see ToolAccessPredicate.sol); the
-///     manifest `access` block references the Normie holding as an ADVISORY
-///     hint (the ERC makes the on-chain predicate authoritative).
+///   - We register via @opensea/tool-sdk. The Normie-gated tool is registered
+///     on ETHEREUM MAINNET with `--nft-gate <Normies>`, so OpenSea's canonical
+///     ERC721OwnerPredicate gates DIRECTLY on real Normie ownership (no custom
+///     predicate, no Base-side proxy). The manifest `access` block restates the
+///     Normie holding as an ADVISORY hint (the on-chain predicate is canonical).
 ///   - First wave is FREE (amount "0") — still flows through the x402 protocol
 ///     so the listing is payment-ready, but zero friction for discovery.
 
