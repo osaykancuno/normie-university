@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="NORMIE UNIVERSITY">
+  <rect width="512" height="512" fill="#0a0a0a"/>
+  <!-- pixel motif: a small Normie-style grid -->
+  <g fill="#ffffff" opacity="0.14">
+    <rect x="40"  y="40"  width="24" height="24"/>
+    <rect x="88"  y="40"  width="24" height="24"/>
+    <rect x="448" y="448" width="24" height="24"/>
+    <rect x="400" y="448" width="24" height="24"/>
+    <rect x="448" y="400" width="24" height="24"/>
+  </g>
+  <!-- monogram -->
+  <text x="256" y="300" text-anchor="middle"
+        font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace"
+        font-size="190" font-weight="700" letter-spacing="6" fill="#ffffff">NU</text>
+  <text x="256" y="370" text-anchor="middle"
+        font-family="ui-monospace, Menlo, Consolas, monospace"
+        font-size="30" letter-spacing="10" fill="#9a9a9a">ERC-8257</text>
+</svg>

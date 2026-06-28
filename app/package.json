@@ -7,10 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "check:erc8257": "npx tsx scripts/check-erc8257.ts",
+    "check:sdk": "npx tsx scripts/check-sdk-parity.ts",
     "check:drift": "node scripts/check-skill-oracle-drift.mjs",
     "check:drift:onchain": "node scripts/check-skill-oracle-drift.mjs --onchain"
   },
   "dependencies": {
+    "@opensea/tool-sdk": "^0.25.0",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@radix-ui/react-tabs": "^1.1.13",
